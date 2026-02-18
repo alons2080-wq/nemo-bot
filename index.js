@@ -25,7 +25,7 @@ client.once('ready', () => {
     client.user.setPresence({
         status: 'idle', // online | idle | dnd | invisible
         activities: [{
-            name: 'Welcoming new members',
+            name: 'Hola soy Nemo pero Bot',
             type: ActivityType.Watching
         }]
     });
@@ -66,4 +66,5 @@ client.on('guildMemberAdd', async (member) => {
 });
 
 client.login(TOKEN);
+
 
