@@ -8,22 +8,25 @@ const {
 const express = require("express");
 
 // ===== CONFIGURATION =====
-const PORT = process.env.PORT;
+const TOKEN = process.env.TOKEN;
+const WELCOME_CHANNEL_ID = "1368057208901996625";
+const ROLE_NAME = "🙍‍♂️ || Miembros";
+// =========================
 
-if (!PORT) {
-    console.error("No PORT found. Railway needs a PORT environment variable.");
-    process.exit(1);
-}
+// ===== SERVIDOR WEB (PARA RAILWAY) =====
+const app = express();
+
+app.get("/", (req, res) => {
+    res.send("Nemo Bot activo");
+});
+
+const PORT = process.env.PORT;
 
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`Web server activo en puerto ${PORT}`);
 });
 
-const WELCOME_CHANNEL_ID = "1368057208901996625";
-const ROLE_NAME = "🙍‍♂️ || Miembros";
-// =========================
-
-// Crear cliente Discord
+// ===== CLIENTE DISCORD =====
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -35,9 +38,8 @@ const client = new Client({
 client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}`);
 
-    // Estado del bot
     client.user.setPresence({
-        status: 'idle', // online | idle | dnd | invisible
+        status: 'idle',
         activities: [{
             name: 'Hola soy Nemo pero Bot',
             type: ActivityType.Watching
@@ -48,7 +50,6 @@ client.once('ready', () => {
 // ===== NUEVO MIEMBRO =====
 client.on('guildMemberAdd', async (member) => {
     try {
-
         const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
         if (!channel) return;
 
@@ -86,15 +87,3 @@ process.on('unhandledRejection', error => {
 process.on('uncaughtException', error => {
     console.error('Uncaught exception:', error);
 });
-
-// ===== SERVIDOR WEB (IMPORTANTE PARA RAILWAY) =====
-const app = express();
-
-app.get("/", (req, res) => {
-    res.send("Nemo Bot activo");
-});
-
-app.listen(process.env.PORT || 3000, () => {
-    console.log("Web server activo");
-});
-
