@@ -8,7 +8,17 @@ const {
 const express = require("express");
 
 // ===== CONFIGURATION =====
-const TOKEN = process.env.TOKEN;
+const PORT = process.env.PORT;
+
+if (!PORT) {
+    console.error("No PORT found. Railway needs a PORT environment variable.");
+    process.exit(1);
+}
+
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Web server activo en puerto ${PORT}`);
+});
+
 const WELCOME_CHANNEL_ID = "1368057208901996625";
 const ROLE_NAME = "🙍‍♂️ || Miembros";
 // =========================
@@ -87,3 +97,4 @@ app.get("/", (req, res) => {
 app.listen(process.env.PORT || 3000, () => {
     console.log("Web server activo");
 });
+
