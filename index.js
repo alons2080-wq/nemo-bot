@@ -66,7 +66,7 @@ client.once("clientReady", async () => {
     client.user.setPresence({
         status: "idle",
         activities: [{
-            name: "Modo Seguridad Activo",
+            name: "A-Animatronicos n-no me maten mas, h-hare lo que sea por pasarme la noche 7...",
             type: ActivityType.Watching
         }]
     });
@@ -212,3 +212,4 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
