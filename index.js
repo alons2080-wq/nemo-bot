@@ -5,18 +5,25 @@ const {
     ActivityType 
 } = require('discord.js');
 
-const express = require("express");
+const express = require('express');
 
-// ================= CONFIG =================
-
+// ================== CONFIG ==================
 const TOKEN = process.env.TOKEN;
 
+const GUILD_ID = "1368057208218058752";
 const WELCOME_CHANNEL_ID = "1368057208901996625";
-const ROLE_NAME = "🙍‍♂️ || Miembros";
-
 const ART_CHANNEL_ID = "1474089674413834442";
 
-// Roles ignorados
+const IGNORED_CHANNELS = [
+    "1368057208901996634",
+    "1368057208901996625",
+    "1368057208901996627",
+    "1470480658609737869",
+    "1396308276597100576"
+];
+
+const ROLE_NAME = "🙍‍♂️ || Miembros";
+
 const STAFF_ROLE_NAMES = [
     "Manager",
     "🛐 || Nemo",
@@ -24,41 +31,25 @@ const STAFF_ROLE_NAMES = [
     "🛠️ || Mods/Ganga"
 ];
 
-// 5 canales donde NO aplica automod
-const IGNORED_CHANNELS = [
-    "1368057208901996627",
-    "1368057208901996625",
-    "1368057208901996634",
-    "1396308276597100576",
-    "1470480658609737869"
-];
-
-// Filtros
+// ====== FILTROS ======
 const SPAM_LIMIT = 6;
 const SPAM_TIME = 5000;
 
 const MENTION_LIMIT = 5;
-const MUTE_TIME = 600000; // 10 minutos
+const MUTE_TIME = 10 * 60 * 1000;
 
 const RAID_LIMIT = 5;
 const RAID_TIME = 10000;
+// ============================================
 
-// ==========================================
-
-// ===== SERVIDOR WEB (Railway) =====
+// ===== Railway Web Server =====
 const app = express();
-
-app.get("/", (req, res) => {
-    res.send("Hola, soy Nemo Bot xd");
+app.get("/", (req, res) => res.send("Bot activo"));
+app.listen(process.env.PORT || 8080, () => {
+    console.log("Web server activo");
 });
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Web server activo en puerto ${PORT}`);
-});
-
-// ===== CLIENTE DISCORD =====
+// ===== Cliente =====
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -69,26 +60,25 @@ const client = new Client({
 });
 
 // ================= READY =================
-client.once('ready', () => {
+client.once("clientReady", async () => {
     console.log(`Logged in as ${client.user.tag}`);
 
     client.user.setPresence({
-        status: 'idle',
+        status: "idle",
         activities: [{
-            name: 'Modo Seguridad Activo',
+            name: "Modo Seguridad Activo",
             type: ActivityType.Watching
         }]
     });
 
-    // Cambiar avatar al iniciar y cada 10 min
-    changeAvatarFromArt();
-    setInterval(changeAvatarFromArt, 10 * 60 * 1000);
+    await changeBannerFromArt();
+    setInterval(changeBannerFromArt, 10 * 60 * 1000);
 });
 
-// =============== BIENVENIDA + ANTI RAID ===============
+// ================= BIENVENIDA + ANTI RAID =================
 let joinTimestamps = [];
 
-client.on('guildMemberAdd', async (member) => {
+client.on("guildMemberAdd", async (member) => {
 
     const now = Date.now();
     joinTimestamps.push(now);
@@ -101,9 +91,7 @@ client.on('guildMemberAdd', async (member) => {
 
         member.guild.members.cache.forEach(async m => {
             if (!m.user.bot && m.joinedTimestamp > now - RAID_TIME) {
-                try {
-                    await m.ban({ reason: "Anti Raid" });
-                } catch {}
+                try { await m.ban({ reason: "Anti Raid" }); } catch {}
             }
         });
 
@@ -127,7 +115,6 @@ client.on('guildMemberAdd', async (member) => {
     // AUTO ROL
     const role = member.guild.roles.cache.find(r => r.name === ROLE_NAME);
     if (role) await member.roles.add(role);
-
 });
 
 // ================= AUTOMOD =================
@@ -135,8 +122,8 @@ const userMessages = new Map();
 
 client.on("messageCreate", async (message) => {
 
-    if (message.author.bot) return;
     if (!message.guild) return;
+    if (message.author.bot) return;
     if (IGNORED_CHANNELS.includes(message.channel.id)) return;
 
     const member = message.member;
@@ -144,20 +131,20 @@ client.on("messageCreate", async (message) => {
 
     if (member.roles.cache.some(role => STAFF_ROLE_NAMES.includes(role.name))) return;
 
-    // BLOQUEAR LINKS
+    // Anti Links
     if (/https?:\/\/|www\./i.test(message.content)) {
         await message.delete().catch(()=>{});
         return;
     }
 
-    // MENTION MASIVO
+    // Mention masivo
     if (message.mentions.users.size >= MENTION_LIMIT) {
         await message.delete().catch(()=>{});
         await member.timeout(MUTE_TIME, "Mention masivo").catch(()=>{});
         return;
     }
 
-    // SPAM
+    // Spam
     const now = Date.now();
 
     if (!userMessages.has(message.author.id)) {
@@ -174,16 +161,15 @@ client.on("messageCreate", async (message) => {
         try {
             await member.ban({ reason: "Spam automático" });
         } catch {}
-
         userMessages.delete(message.author.id);
     }
-
 });
 
 // ================= CAMBIO DE BANNER =================
 async function changeBannerFromArt() {
     try {
-        const channel = await client.channels.fetch(ART_CHANNEL_ID);
+        const guild = await client.guilds.fetch(GUILD_ID);
+        const channel = await guild.channels.fetch(ART_CHANNEL_ID);
         if (!channel) return;
 
         const messages = await channel.messages.fetch({ limit: 100 });
@@ -192,7 +178,10 @@ async function changeBannerFromArt() {
 
         messages.forEach(msg => {
             msg.attachments.forEach(att => {
+                if (!att.name) return;
+
                 const name = att.name.toLowerCase();
+
                 if (
                     name.endsWith(".png") ||
                     name.endsWith(".jpg") ||
@@ -200,21 +189,18 @@ async function changeBannerFromArt() {
                     name.endsWith(".gif") ||
                     name.endsWith(".webp")
                 ) {
-                    images.push(att);
+                    images.push(att.url);
                 }
             });
         });
 
-        if (images.length === 0) {
-            console.log("No hay imágenes válidas.");
-            return;
-        }
+        if (images.length === 0) return;
 
         const randomImage = images[Math.floor(Math.random() * images.length)];
 
-        await client.user.setBanner(randomImage.url);
+        await client.user.setBanner(randomImage);
 
-        console.log("Banner actualizado correctamente.");
+        console.log("Banner actualizado.");
 
     } catch (error) {
         console.error("Error cambiando banner:", error);
@@ -224,9 +210,5 @@ async function changeBannerFromArt() {
 // ================= LOGIN =================
 client.login(TOKEN);
 
-// ================= ERRORES =================
-process.on('unhandledRejection', error => console.error(error));
-process.on('uncaughtException', error => console.error(error));
-
-
-
+process.on("unhandledRejection", console.error);
+process.on("uncaughtException", console.error);
