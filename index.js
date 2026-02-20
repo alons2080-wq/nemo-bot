@@ -26,11 +26,11 @@ const STAFF_ROLE_NAMES = [
 
 // 5 canales donde NO aplica automod
 const IGNORED_CHANNELS = [
-    "PON_ID_1",
-    "PON_ID_2",
-    "PON_ID_3",
-    "PON_ID_4",
-    "PON_ID_5"
+    "1368057208901996627",
+    "1368057208901996625",
+    "1368057208901996634",
+    "1396308276597100576",
+    "1470480658609737869"
 ];
 
 // Filtros
@@ -220,3 +220,4 @@ client.login(TOKEN);
 // ================= ERRORES =================
 process.on('unhandledRejection', error => console.error(error));
 process.on('uncaughtException', error => console.error(error));
+
