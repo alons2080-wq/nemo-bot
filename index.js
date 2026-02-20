@@ -130,7 +130,6 @@ async function registerCommands() {
 
 // ================= CONFIG =================
 
-// 🔴 PON AQUÍ EL ID DEL CANAL
 const NEMO_CHANNEL_ID = "UCizsH-_19uxQPhyPhjQFDkg";
 
 const palabras = [
@@ -408,6 +407,7 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
 
