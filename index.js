@@ -225,7 +225,7 @@ client.on("messageCreate", async (message) => {
         contenido.includes("hola bot") ||
         contenido.includes("hola nemo bot") ||
         contenido.includes("Hola Nemo Bot") ||
-        contenido.includes("Hola bot") ||
+        contenido.includes("Hola bot") 
     ) {
         return message.reply("Hola usuario, ¿Como estas? Por que yo bastante bien, aunque no me lo preguntaron, que maleducados, los voy a acusar con su mamá para que les de sus nalgadas.");
     }
@@ -313,6 +313,7 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
 
