@@ -75,7 +75,7 @@ client.once("clientReady", async () => {
         " Ya no se q poner de estado realmente",   // Estado 3
         " Recuerda q me creo MrRat0 xd",   // Estado 4
         " Pagina Oficial: https://nemo-web.onrender.com"    // Estado 5
-        " Suscirbete a Nemo aqui https://www.youtube.com/@nemo_704" // Estado 6
+        " Suscirbete a Nemo, no te cuesta nada :)" // Estado 6
         " Bot oficial de Nemo_704" // Estado 7
         " Gracias por seguir esta comunidad :)"
     ];
@@ -316,6 +316,7 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
 
