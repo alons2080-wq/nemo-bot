@@ -14,7 +14,7 @@ const express = require('express');
 // ================== CONFIG ==================
 const TOKEN = process.env.TOKEN;
 
-const CLIENT_ID = "PON_AQUI_TU_APPLICATION_ID";
+const CLIENT_ID = "1473352150187905096";
 const GUILD_ID = "1368057208218058752";
 const WELCOME_CHANNEL_ID = "1368057208901996625";
 const ART_CHANNEL_ID = "1474089674413834442";
@@ -71,7 +71,7 @@ client.once("clientReady", async () => {
     client.user.setPresence({
         status: "idle",
         activities: [{
-            name: "Vigilando la noche...",
+            name: "Me obligaron a NO ser maid xd",
             type: ActivityType.Watching
         }]
     });
@@ -279,3 +279,4 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
