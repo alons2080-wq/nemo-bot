@@ -188,26 +188,33 @@ async function changeAvatarFromArt() {
 
         const messages = await channel.messages.fetch({ limit: 100 });
 
-        const images = messages
-            .flatMap(msg => Array.from(msg.attachments.values()))
-            .filter(att => {
+        let images = [];
+
+        messages.forEach(msg => {
+            msg.attachments.forEach(att => {
                 const name = att.name.toLowerCase();
-                return (
+                if (
                     name.endsWith(".png") ||
                     name.endsWith(".jpg") ||
                     name.endsWith(".jpeg") ||
                     name.endsWith(".gif") ||
                     name.endsWith(".webp")
-                );
+                ) {
+                    images.push(att);
+                }
             });
+        });
 
-        if (images.length === 0) return;
+        if (images.length === 0) {
+            console.log("No hay imágenes válidas en el canal arte.");
+            return;
+        }
 
         const randomImage = images[Math.floor(Math.random() * images.length)];
 
         await client.user.setAvatar(randomImage.url);
 
-        console.log("Avatar actualizado.");
+        console.log("Avatar actualizado correctamente.");
 
     } catch (error) {
         console.error("Error cambiando avatar:", error);
@@ -220,4 +227,5 @@ client.login(TOKEN);
 // ================= ERRORES =================
 process.on('unhandledRejection', error => console.error(error));
 process.on('uncaughtException', error => console.error(error));
+
 
