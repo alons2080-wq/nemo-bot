@@ -110,7 +110,11 @@ async function registerCommands() {
 
         new SlashCommandBuilder()
             .setName("nemo_ldd")
-            .setDescription("Letra del día")
+            .setDescription("Letra del día"),
+
+        new SlashCommandBuilder()
+            .setName("nemo_counter")
+            .setDescription("Muestra cuántos miembros tiene el canal de Nemo")
     ];
 
     const rest = new REST({ version: "10" }).setToken(TOKEN);
@@ -123,7 +127,12 @@ async function registerCommands() {
     console.log("Slash commands registrados.");
 }
 
-// ===== CONTENIDO =====
+
+// ================= CONFIG =================
+
+// 🔴 PON AQUÍ EL ID DEL CANAL
+const NEMO_CHANNEL_ID = "UCizsH-_19uxQPhyPhjQFDkg";
+
 const palabras = [
     "Oscuridad",
     "Sombras",
@@ -137,15 +146,17 @@ const palabras = [
     "Susurro"
 ];
 
-const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const letras = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ".split("");
 
-// ===== COOLDOWNS =====
 const cooldowns = {
     pdd: 0,
     ldd: 0
 };
 
 const DAY = 24 * 60 * 60 * 1000;
+
+
+// ================= INTERACTION HANDLER =================
 
 client.on("interactionCreate", async interaction => {
 
@@ -180,6 +191,7 @@ client.on("interactionCreate", async interaction => {
         return interaction.reply({ embeds: [embed] });
     }
 
+
     // ================= LDD =================
     if (interaction.commandName === "nemo_ldd") {
 
@@ -206,6 +218,48 @@ client.on("interactionCreate", async interaction => {
 
         return interaction.reply({ embeds: [embed] });
     }
+
+
+    // ================= NEMO COUNTER =================
+    if (interaction.commandName === "nemo_counter") {
+
+        if (!interaction.guild) {
+            return interaction.reply({
+                content: "Este comando solo funciona en servidores.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        try {
+
+            const channel = await interaction.guild.channels.fetch(NEMO_CHANNEL_ID);
+
+            if (!channel) {
+                return interaction.reply({
+                    content: "No encontré el canal.",
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            const memberCount = interaction.guild.memberCount;
+
+            const embed = new EmbedBuilder()
+                .setTitle("📊 Contador de Subs")
+                .setDescription(`Actualmente hay:\n\n👥 **${memberCount} miembros**`)
+                .setColor(0x00bfff)
+                .setTimestamp();
+
+            return interaction.reply({ embeds: [embed] });
+
+        } catch (error) {
+            console.error(error);
+            return interaction.reply({
+                content: "Error al obtener el canal.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
+    }
+
 });
 
 // ================= BIENVENIDA + ANTI RAID =================
@@ -354,6 +408,7 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
 
