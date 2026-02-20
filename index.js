@@ -68,13 +68,31 @@ client.once("clientReady", async () => {
 
     console.log(`Logged in as ${client.user.tag}`);
 
-    client.user.setPresence({
-        status: "idle",
-        activities: [{
-            name: "Me obligaron a NO ser maid xd",
-            type: ActivityType.Watching
-        }]
-    });
+    // ===== ESTADOS ROTATIVOS =====
+    const estados = [
+        " Ya no puedo ser madi :c",   // Estado 1
+        " Hola gente xd",   // Estado 2
+        " Ya no se q poner de estado realmente",   // Estado 3
+        " Recuerda q me creo MrRat0 xd",   // Estado 4
+        " Pagina Oficial: https://nemo-web.onrender.com"    // Estado 5
+    ];
+
+    let index = 0;
+
+    function cambiarEstado() {
+        client.user.setPresence({
+            status: "idle",
+            activities: [{
+                name: estados[index],
+                type: ActivityType.Watching
+            }]
+        });
+
+        index = (index + 1) % estados.length;
+    }
+
+    cambiarEstado(); // Ejecuta inmediatamente
+    setInterval(cambiarEstado, 60 * 1000); // Cambia cada 1 minuto
 
     await registerCommands();
     await changeBannerFromArt();
@@ -279,4 +297,5 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
