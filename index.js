@@ -206,7 +206,7 @@ client.on("guildMemberAdd", async (member) => {
     if (role) await member.roles.add(role);
 });
 
-// ================= AUTOMOD =================
+// ================= AUTOMOD + RESPUESTAS =================
 const userMessages = new Map();
 
 client.on("messageCreate", async (message) => {
@@ -218,19 +218,35 @@ client.on("messageCreate", async (message) => {
     const member = message.member;
     if (!member) return;
 
+    // ===== RESPUESTAS AUTOMÁTICAS =====
+    const contenido = message.content.toLowerCase();
+
+    if (
+        contenido.includes("hola pepe") ||
+        contenido.includes("hola pp") ||
+        contenido.includes("Hola pp") ||
+        contenido.includes("Hola pepe")
+    ) {
+        return message.reply("Como te va");
+    }
+
+    // ===== IGNORAR STAFF =====
     if (member.roles.cache.some(role => STAFF_ROLE_NAMES.includes(role.name))) return;
 
+    // ===== ANTI LINKS =====
     if (/https?:\/\/|www\./i.test(message.content)) {
         await message.delete().catch(()=>{});
         return;
     }
 
+    // ===== MENTION MASIVO =====
     if (message.mentions.users.size >= MENTION_LIMIT) {
         await message.delete().catch(()=>{});
         await member.timeout(MUTE_TIME, "Mention masivo").catch(()=>{});
         return;
     }
 
+    // ===== SPAM =====
     const now = Date.now();
 
     if (!userMessages.has(message.author.id)) {
@@ -297,6 +313,7 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
 
