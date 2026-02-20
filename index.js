@@ -75,8 +75,6 @@ client.once("clientReady", async () => {
         " Ya no se q poner de estado realmente",   // Estado 3
         " Recuerda q me creo MrRat0 xd",   // Estado 4
         " Pagina Oficial: https://nemo-web.onrender.com"    // Estado 5
-        " Bot oficial de Nemo_704" // Estado 6
-        " Gracias por seguir esta comunidad :)" // Estado final
     ];
 
     let index = 0;
@@ -315,6 +313,7 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
 
