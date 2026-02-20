@@ -180,8 +180,8 @@ client.on("messageCreate", async (message) => {
 
 });
 
-// ================= CAMBIO DE AVATAR =================
-async function changeAvatarFromArt() {
+// ================= CAMBIO DE BANNER =================
+async function changeBannerFromArt() {
     try {
         const channel = await client.channels.fetch(ART_CHANNEL_ID);
         if (!channel) return;
@@ -206,18 +206,18 @@ async function changeAvatarFromArt() {
         });
 
         if (images.length === 0) {
-            console.log("No hay imágenes válidas en el canal arte.");
+            console.log("No hay imágenes válidas.");
             return;
         }
 
         const randomImage = images[Math.floor(Math.random() * images.length)];
 
-        await client.user.setAvatar(randomImage.url);
+        await client.user.setBanner(randomImage.url);
 
-        console.log("Avatar actualizado correctamente.");
+        console.log("Banner actualizado correctamente.");
 
     } catch (error) {
-        console.error("Error cambiando avatar:", error);
+        console.error("Error cambiando banner:", error);
     }
 }
 
@@ -227,5 +227,6 @@ client.login(TOKEN);
 // ================= ERRORES =================
 process.on('unhandledRejection', error => console.error(error));
 process.on('uncaughtException', error => console.error(error));
+
 
 
