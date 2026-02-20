@@ -99,7 +99,12 @@ client.once("clientReady", async () => {
     setInterval(changeBannerFromArt, 10 * 60 * 1000);
 });
 
-// ================= SLASH COMMANDS =================
+// ================= REQUIRE (if needed) =================
+// Only if Node < 18
+const fetch = require("node-fetch");
+
+
+// ================= SLASH COMMAND REGISTRATION =================
 
 async function registerCommands() {
 
@@ -114,7 +119,7 @@ async function registerCommands() {
 
         new SlashCommandBuilder()
             .setName("nemo_counter")
-            .setDescription("Muestra cuántos miembros tiene el canal de Nemo")
+            .setDescription("Muestra estadísticas del canal de YouTube")
     ];
 
     const rest = new REST({ version: "10" }).setToken(TOKEN);
@@ -124,28 +129,27 @@ async function registerCommands() {
         { body: commands.map(cmd => cmd.toJSON()) }
     );
 
-    console.log("Slash commands registrados.");
+    console.log("Slash commands registered.");
 }
 
 
 // ================= CONFIG =================
 
-const NEMO_CHANNEL_ID = "UCizsH-_19uxQPhyPhjQFDkg";
+const YOUTUBE_CHANNEL_ID = "UCizsH-_19uxQPhyPhjQFDkg";
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
 const palabras = [
     "Oscuridad",
     "Sombras",
     "Destino",
     "Silencio",
-    "Animatrónico",
+    "Animatronico",
     "Sobrevivir",
     "Pesadilla",
-    "Vigilia",
-    "Ecos",
-    "Susurro"
+    "Vigilia"
 ];
 
-const letras = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ".split("");
+const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 const cooldowns = {
     pdd: 0,
@@ -154,6 +158,115 @@ const cooldowns = {
 
 const DAY = 24 * 60 * 60 * 1000;
 
+
+// ================= INTERACTION HANDLER =================
+
+client.on("interactionCreate", async interaction => {
+
+    if (!interaction.isChatInputCommand()) return;
+
+    const now = Date.now();
+
+    // ===== PDD =====
+    if (interaction.commandName === "nemo_pdd") {
+
+        if (now - cooldowns.pdd < DAY) {
+            return interaction.reply({
+                content: "This command was already used today.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        cooldowns.pdd = now;
+
+        const palabra = palabras[Math.floor(Math.random() * palabras.length)];
+
+        const embed = new EmbedBuilder()
+            .setTitle("Word of the Day")
+            .setDescription(`**${palabra}**`)
+            .setColor(0x2b2d31)
+            .setTimestamp();
+
+        return interaction.reply({ embeds: [embed] });
+    }
+
+    // ===== LDD =====
+    if (interaction.commandName === "nemo_ldd") {
+
+        if (now - cooldowns.ldd < DAY) {
+            return interaction.reply({
+                content: "This command was already used today.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        cooldowns.ldd = now;
+
+        const letra = letras[Math.floor(Math.random() * letras.length)];
+
+        const embed = new EmbedBuilder()
+            .setTitle("Letter of the Day")
+            .setDescription(`**${letra}**`)
+            .setColor(0x5865f2)
+            .setTimestamp();
+
+        return interaction.reply({ embeds: [embed] });
+    }
+
+    // ===== YOUTUBE COUNTER =====
+    if (interaction.commandName === "nemo_counter") {
+
+        try {
+
+            const response = await fetch(
+                `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${YOUTUBE_CHANNEL_ID}&key=${YOUTUBE_API_KEY}`
+            );
+
+            const data = await response.json();
+
+            if (!data.items || data.items.length === 0) {
+                return interaction.reply({
+                    content: "Channel not found.",
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            const stats = data.items[0].statistics;
+
+            if (!stats.subscriberCount) {
+                return interaction.reply({
+                    content: "Subscriber count is hidden.",
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            const subs = Number(stats.subscriberCount).toLocaleString();
+            const views = Number(stats.viewCount).toLocaleString();
+            const videos = Number(stats.videoCount).toLocaleString();
+
+            const embed = new EmbedBuilder()
+                .setTitle("YouTube Channel Stats")
+                .addFields(
+                    { name: "Subscribers", value: subs, inline: true },
+                    { name: "Views", value: views, inline: true },
+                    { name: "Videos", value: videos, inline: true }
+                )
+                .setColor(0xff0000)
+                .setTimestamp();
+
+            return interaction.reply({ embeds: [embed] });
+
+        } catch (error) {
+            console.error("YouTube API error:", error);
+
+            return interaction.reply({
+                content: "Error fetching YouTube data.",
+                flags: MessageFlags.Ephemeral
+            });
+        }
+    }
+
+});
 
 // ================= INTERACTION HANDLER =================
 
@@ -407,6 +520,7 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
 
