@@ -193,8 +193,8 @@ client.on("guildMemberAdd", async (member) => {
     const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
     if (channel) {
         const embed = new EmbedBuilder()
-            .setTitle("Bienvenido!")
-            .setDescription(`Hola ${member}, disfruta tu estancia.`)
+            .setTitle("Bienvenido Usuario!")
+            .setDescription(`Hola ${member}, y bienvenido a Nemo´s, este es el servidor oficial de Nemo_704.`)
             .setColor(0x00ff99)
             .setThumbnail(member.user.displayAvatarURL())
             .setTimestamp();
@@ -222,12 +222,12 @@ client.on("messageCreate", async (message) => {
     const contenido = message.content.toLowerCase();
 
     if (
-        contenido.includes("hola pepe") ||
-        contenido.includes("hola pp") ||
-        contenido.includes("Hola pp") ||
-        contenido.includes("Hola pepe")
+        contenido.includes("hola bot") ||
+        contenido.includes("hola nemo bot") ||
+        contenido.includes("Hola Nemo Bot") ||
+        contenido.includes("Hola bot") ||
     ) {
-        return message.reply("Como te va");
+        return message.reply("Hola usuario, ¿Como estas? Por que yo bastante bien, aunque no me lo preguntaron, que maleducados, los voy a acusar con su mamá para que les de sus nalgadas.");
     }
 
     // ===== IGNORAR STAFF =====
@@ -313,6 +313,7 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
 
