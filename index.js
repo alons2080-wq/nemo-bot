@@ -98,12 +98,6 @@ client.once("clientReady", async () => {
     await changeBannerFromArt();
     setInterval(changeBannerFromArt, 10 * 60 * 1000);
 });
-
-// ================= REQUIRE (if needed) =================
-// Only if Node < 18
-const fetch = require("node-fetch");
-
-
 // ================= SLASH COMMAND REGISTRATION =================
 
 async function registerCommands() {
@@ -520,6 +514,7 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
 
