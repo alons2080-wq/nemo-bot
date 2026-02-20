@@ -2,7 +2,10 @@ const {
     Client, 
     GatewayIntentBits, 
     EmbedBuilder, 
-    ActivityType 
+    ActivityType,
+    REST,
+    Routes,
+    SlashCommandBuilder
 } = require('discord.js');
 
 const express = require('express');
@@ -10,6 +13,7 @@ const express = require('express');
 // ================== CONFIG ==================
 const TOKEN = process.env.TOKEN;
 
+const CLIENT_ID = "1473352150187905096";
 const GUILD_ID = "1368057208218058752";
 const WELCOME_CHANNEL_ID = "1368057208901996625";
 const ART_CHANNEL_ID = "1474089674413834442";
@@ -42,12 +46,11 @@ const RAID_LIMIT = 5;
 const RAID_TIME = 10000;
 // ============================================
 
+
 // ===== Railway Web Server =====
 const app = express();
 app.get("/", (req, res) => res.send("Bot activo"));
-app.listen(process.env.PORT || 8080, () => {
-    console.log("Web server activo");
-});
+app.listen(process.env.PORT || 8080);
 
 // ===== Cliente =====
 const client = new Client({
@@ -61,6 +64,7 @@ const client = new Client({
 
 // ================= READY =================
 client.once("clientReady", async () => {
+
     console.log(`Logged in as ${client.user.tag}`);
 
     client.user.setPresence({
@@ -71,9 +75,107 @@ client.once("clientReady", async () => {
         }]
     });
 
+    await registerCommands();
     await changeBannerFromArt();
     setInterval(changeBannerFromArt, 10 * 60 * 1000);
 });
+
+
+// ================= SLASH COMMANDS =================
+
+async function registerCommands() {
+
+    const commands = [
+
+        new SlashCommandBuilder()
+            .setName("nemo_maid")
+            .setDescription("Modo maid activado"),
+
+        new SlashCommandBuilder()
+            .setName("nemo_pdd")
+            .setDescription("Palabra del día")
+    ];
+
+    const rest = new REST({ version: "10" }).setToken(TOKEN);
+
+    await rest.put(
+        Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+        { body: commands.map(cmd => cmd.toJSON()) }
+    );
+
+    console.log("Slash commands registrados.");
+}
+
+const maidMessages = [
+    "A-Animatrónicos n-no me maten más...",
+    "H-haré lo que sea por pasar la noche 7...",
+    "P-por favor no apaguen la luz...",
+    "E-es solo una noche más...",
+    "N-no fue mi culpa...",
+    "L-la puerta está cerrada, ¿verdad...?",
+    "S-solo quiero sobrevivir...",
+    "E-estoy haciendo mi mejor esfuerzo...",
+    "P-por favor no entren al cuarto...",
+    "N-no mires detrás de ti..."
+];
+
+const palabras = [
+    "Oscuridad",
+    "Sombras",
+    "Destino",
+    "Silencio",
+    "Animatrónico",
+    "Sobrevivir",
+    "Pesadilla",
+    "Vigilia",
+    "Ecos",
+    "Susurro"
+];
+
+let lastUsedPDD = 0;
+
+client.on("interactionCreate", async interaction => {
+
+    if (!interaction.isChatInputCommand()) return;
+
+    if (interaction.commandName === "nemo_maid") {
+
+        const random = maidMessages[Math.floor(Math.random() * maidMessages.length)];
+
+        return interaction.reply({
+            content: `🖤 ${interaction.user} ${random}`
+        });
+    }
+
+    if (interaction.commandName === "nemo_pdd") {
+
+        const now = Date.now();
+
+        if (now - lastUsedPDD < 24 * 60 * 60 * 1000) {
+
+            const remaining = 24 * 60 * 60 * 1000 - (now - lastUsedPDD);
+            const hours = Math.floor(remaining / (1000 * 60 * 60));
+
+            return interaction.reply({
+                content: `⏳ Ya se usó hoy. Espera ${hours} horas.`,
+                ephemeral: true
+            });
+        }
+
+        lastUsedPDD = now;
+
+        const palabra = palabras[Math.floor(Math.random() * palabras.length)];
+
+        const embed = new EmbedBuilder()
+            .setTitle("📖 Palabra del Día")
+            .setDescription(`La palabra de hoy es:\n\n**${palabra}**`)
+            .setColor(0x2b2d31)
+            .setTimestamp();
+
+        return interaction.reply({ embeds: [embed] });
+    }
+});
+
 
 // ================= BIENVENIDA + ANTI RAID =================
 let joinTimestamps = [];
@@ -84,7 +186,6 @@ client.on("guildMemberAdd", async (member) => {
     joinTimestamps.push(now);
     joinTimestamps = joinTimestamps.filter(time => now - time < RAID_TIME);
 
-    // ANTI RAID
     if (joinTimestamps.length >= RAID_LIMIT) {
 
         console.log("🚨 RAID DETECTADO");
@@ -99,7 +200,6 @@ client.on("guildMemberAdd", async (member) => {
         return;
     }
 
-    // BIENVENIDA
     const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
     if (channel) {
         const embed = new EmbedBuilder()
@@ -112,10 +212,10 @@ client.on("guildMemberAdd", async (member) => {
         channel.send({ embeds: [embed] });
     }
 
-    // AUTO ROL
     const role = member.guild.roles.cache.find(r => r.name === ROLE_NAME);
     if (role) await member.roles.add(role);
 });
+
 
 // ================= AUTOMOD =================
 const userMessages = new Map();
@@ -165,6 +265,7 @@ client.on("messageCreate", async (message) => {
     }
 });
 
+
 // ================= CAMBIO DE BANNER =================
 async function changeBannerFromArt() {
     try {
@@ -197,7 +298,6 @@ async function changeBannerFromArt() {
         if (images.length === 0) return;
 
         const randomImage = images[Math.floor(Math.random() * images.length)];
-
         await client.user.setBanner(randomImage);
 
         console.log("Banner actualizado.");
@@ -207,9 +307,9 @@ async function changeBannerFromArt() {
     }
 }
 
+
 // ================= LOGIN =================
 client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
-
