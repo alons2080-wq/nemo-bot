@@ -99,14 +99,18 @@ client.once("clientReady", async () => {
     setInterval(changeBannerFromArt, 10 * 60 * 1000);
 });
 
-// ================= SLASH COMMAND =================
+// ================= SLASH COMMANDS =================
 
 async function registerCommands() {
 
     const commands = [
         new SlashCommandBuilder()
             .setName("nemo_pdd")
-            .setDescription("Palabra del día")
+            .setDescription("Palabra del día"),
+
+        new SlashCommandBuilder()
+            .setName("nemo_ldd")
+            .setDescription("Letra del día")
     ];
 
     const rest = new REST({ version: "10" }).setToken(TOKEN);
@@ -116,9 +120,10 @@ async function registerCommands() {
         { body: commands.map(cmd => cmd.toJSON()) }
     );
 
-    console.log("Slash command registrado.");
+    console.log("Slash commands registrados.");
 }
 
+// ===== CONTENIDO =====
 const palabras = [
     "Oscuridad",
     "Sombras",
@@ -132,19 +137,28 @@ const palabras = [
     "Susurro"
 ];
 
-let lastUsedPDD = 0;
+const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+// ===== COOLDOWNS =====
+const cooldowns = {
+    pdd: 0,
+    ldd: 0
+};
+
+const DAY = 24 * 60 * 60 * 1000;
 
 client.on("interactionCreate", async interaction => {
 
     if (!interaction.isChatInputCommand()) return;
 
+    const now = Date.now();
+
+    // ================= PDD =================
     if (interaction.commandName === "nemo_pdd") {
 
-        const now = Date.now();
+        if (now - cooldowns.pdd < DAY) {
 
-        if (now - lastUsedPDD < 24 * 60 * 60 * 1000) {
-
-            const remaining = 24 * 60 * 60 * 1000 - (now - lastUsedPDD);
+            const remaining = DAY - (now - cooldowns.pdd);
             const hours = Math.floor(remaining / (1000 * 60 * 60));
 
             return interaction.reply({
@@ -153,7 +167,7 @@ client.on("interactionCreate", async interaction => {
             });
         }
 
-        lastUsedPDD = now;
+        cooldowns.pdd = now;
 
         const palabra = palabras[Math.floor(Math.random() * palabras.length)];
 
@@ -161,6 +175,33 @@ client.on("interactionCreate", async interaction => {
             .setTitle("📖 Palabra del Día")
             .setDescription(`La palabra de hoy es:\n\n**${palabra}**`)
             .setColor(0x2b2d31)
+            .setTimestamp();
+
+        return interaction.reply({ embeds: [embed] });
+    }
+
+    // ================= LDD =================
+    if (interaction.commandName === "nemo_ldd") {
+
+        if (now - cooldowns.ldd < DAY) {
+
+            const remaining = DAY - (now - cooldowns.ldd);
+            const hours = Math.floor(remaining / (1000 * 60 * 60));
+
+            return interaction.reply({
+                content: `⏳ Ya se usó hoy. Espera ${hours} horas.`,
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
+        cooldowns.ldd = now;
+
+        const letra = letras[Math.floor(Math.random() * letras.length)];
+
+        const embed = new EmbedBuilder()
+            .setTitle("🔤 Letra del Día")
+            .setDescription(`La letra de hoy es:\n\n**${letra}**`)
+            .setColor(0x5865f2)
             .setTimestamp();
 
         return interaction.reply({ embeds: [embed] });
@@ -313,6 +354,7 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
 
