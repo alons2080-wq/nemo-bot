@@ -5,7 +5,8 @@ const {
     ActivityType,
     REST,
     Routes,
-    SlashCommandBuilder
+    SlashCommandBuilder,
+    MessageFlags
 } = require('discord.js');
 
 const express = require('express');
@@ -13,7 +14,7 @@ const express = require('express');
 // ================== CONFIG ==================
 const TOKEN = process.env.TOKEN;
 
-const CLIENT_ID = "1473352150187905096";
+const CLIENT_ID = "PON_AQUI_TU_APPLICATION_ID";
 const GUILD_ID = "1368057208218058752";
 const WELCOME_CHANNEL_ID = "1368057208901996625";
 const ART_CHANNEL_ID = "1474089674413834442";
@@ -70,7 +71,7 @@ client.once("clientReady", async () => {
     client.user.setPresence({
         status: "idle",
         activities: [{
-            name: "A-Animatronicos n-no me maten mas, h-hare lo que sea por pasarme la noche 7...",
+            name: "Vigilando la noche...",
             type: ActivityType.Watching
         }]
     });
@@ -80,17 +81,11 @@ client.once("clientReady", async () => {
     setInterval(changeBannerFromArt, 10 * 60 * 1000);
 });
 
-
-// ================= SLASH COMMANDS =================
+// ================= SLASH COMMAND =================
 
 async function registerCommands() {
 
     const commands = [
-
-        new SlashCommandBuilder()
-            .setName("nemo_maid")
-            .setDescription("Modo maid activado"),
-
         new SlashCommandBuilder()
             .setName("nemo_pdd")
             .setDescription("Palabra del día")
@@ -103,21 +98,8 @@ async function registerCommands() {
         { body: commands.map(cmd => cmd.toJSON()) }
     );
 
-    console.log("Slash commands registrados.");
+    console.log("Slash command registrado.");
 }
-
-const maidMessages = [
-    "A-Animatrónicos n-no me maten más...",
-    "H-haré lo que sea por pasar la noche 7...",
-    "P-por favor no apaguen la luz...",
-    "E-es solo una noche más...",
-    "N-no fue mi culpa...",
-    "L-la puerta está cerrada, ¿verdad...?",
-    "S-solo quiero sobrevivir...",
-    "E-estoy haciendo mi mejor esfuerzo...",
-    "P-por favor no entren al cuarto...",
-    "N-no mires detrás de ti..."
-];
 
 const palabras = [
     "Oscuridad",
@@ -138,15 +120,6 @@ client.on("interactionCreate", async interaction => {
 
     if (!interaction.isChatInputCommand()) return;
 
-    if (interaction.commandName === "nemo_maid") {
-
-        const random = maidMessages[Math.floor(Math.random() * maidMessages.length)];
-
-        return interaction.reply({
-            content: `🖤 ${interaction.user} ${random}`
-        });
-    }
-
     if (interaction.commandName === "nemo_pdd") {
 
         const now = Date.now();
@@ -158,7 +131,7 @@ client.on("interactionCreate", async interaction => {
 
             return interaction.reply({
                 content: `⏳ Ya se usó hoy. Espera ${hours} horas.`,
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
 
@@ -175,7 +148,6 @@ client.on("interactionCreate", async interaction => {
         return interaction.reply({ embeds: [embed] });
     }
 });
-
 
 // ================= BIENVENIDA + ANTI RAID =================
 let joinTimestamps = [];
@@ -216,7 +188,6 @@ client.on("guildMemberAdd", async (member) => {
     if (role) await member.roles.add(role);
 });
 
-
 // ================= AUTOMOD =================
 const userMessages = new Map();
 
@@ -231,20 +202,17 @@ client.on("messageCreate", async (message) => {
 
     if (member.roles.cache.some(role => STAFF_ROLE_NAMES.includes(role.name))) return;
 
-    // Anti Links
     if (/https?:\/\/|www\./i.test(message.content)) {
         await message.delete().catch(()=>{});
         return;
     }
 
-    // Mention masivo
     if (message.mentions.users.size >= MENTION_LIMIT) {
         await message.delete().catch(()=>{});
         await member.timeout(MUTE_TIME, "Mention masivo").catch(()=>{});
         return;
     }
 
-    // Spam
     const now = Date.now();
 
     if (!userMessages.has(message.author.id)) {
@@ -264,7 +232,6 @@ client.on("messageCreate", async (message) => {
         userMessages.delete(message.author.id);
     }
 });
-
 
 // ================= CAMBIO DE BANNER =================
 async function changeBannerFromArt() {
@@ -306,7 +273,6 @@ async function changeBannerFromArt() {
         console.error("Error cambiando banner:", error);
     }
 }
-
 
 // ================= LOGIN =================
 client.login(TOKEN);
