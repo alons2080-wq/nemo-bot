@@ -70,7 +70,7 @@ client.once("clientReady", async () => {
 
     // ===== ESTADOS ROTATIVOS =====
     const estados = [
-        " Ya no puedo ser madi :c",   // Estado 1
+        " Ya no puedo ser maid :c",   // Estado 1
         " Hola gente xd",   // Estado 2
         " Ya no se q poner de estado realmente",   // Estado 3
         " Recuerda q me creo MrRat0 xd",   // Estado 4
@@ -297,5 +297,6 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
