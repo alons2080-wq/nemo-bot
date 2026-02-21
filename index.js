@@ -73,7 +73,7 @@ client.once("clientReady", async () => {
         " Hola gente",   // Estado 1
         " Ya no soy maid :c",   // Estado 2
         " Sabias que los pitufos, papa pitufo, y pitufina, son pitufos",   // Estado 3
-        " Estoy... estoy procesando las cosas tan ATROZES que hizo P3t3r Scully...",   // Estado 4
+        " Hola papulince",   // Estado 4
         " Suscribete a Nemo. Dale :D"    // Estado 5
     ];
 
@@ -296,3 +296,4 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
