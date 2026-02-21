@@ -109,157 +109,187 @@ client.once("clientReady", async () => {
     await changeBannerFromArt();
     setInterval(changeBannerFromArt, 10 * 60 * 1000);
 });
-# =========================
-# SLASH COMMANDS - NEMO
-# =========================
+// ================= SLASH COMMANDS =================
 
-import discord
-from discord import app_commands
-from discord.ext import commands
-import yt_dlp
-import asyncio
-import random
-from datetime import datetime
+const { 
+    joinVoiceChannel, 
+    createAudioPlayer, 
+    createAudioResource,
+    getVoiceConnection,
+    AudioPlayerStatus 
+} = require('@discordjs/voice');
 
-intents = discord.Intents.default()
-intents.message_content = True
-intents.voice_states = True
+const play = require('play-dl');
 
-bot = commands.Bot(command_prefix="!", intents=intents)
-
-# =========================
-# VARIABLES GLOBALES
-# =========================
-
-# -------- PALABRA DEL DIA --------
-daily_words = [
+// ===== PALABRA DEL DIA =====
+const dailyWords = [
     "Ocean",
     "Curiosity",
     "Dream",
     "Innovation",
     "Future"
-]
+];
 
-pdd_usage = {}  # {user_id: [date_string, uses]}
+const pddUsage = new Map(); // userId -> { date, uses }
 
-# -------- MUSICA --------
-FFMPEG_OPTIONS = {
-    'options': '-vn'
+// ===== MUSICA =====
+const musicPlayers = new Map(); // guildId -> { connection, player }
+
+// ================= REGISTRAR COMANDOS =================
+async function registerCommands() {
+
+    const commands = [
+
+        new SlashCommandBuilder()
+            .setName("nemo_pdd")
+            .setDescription("Palabra del dia (max 2 veces por usuario)"),
+
+        new SlashCommandBuilder()
+            .setName("play")
+            .setDescription("Reproduce musica desde YouTube")
+            .addStringOption(option =>
+                option.setName("url")
+                    .setDescription("Link del video")
+                    .setRequired(true)
+            ),
+
+        new SlashCommandBuilder()
+            .setName("stop")
+            .setDescription("Detiene la musica"),
+
+        new SlashCommandBuilder()
+            .setName("leave")
+            .setDescription("Desconecta el bot del canal de voz")
+
+    ].map(cmd => cmd.toJSON());
+
+    const rest = new REST({ version: "10" }).setToken(TOKEN);
+
+    await rest.put(
+        Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+        { body: commands }
+    );
+
+    console.log("Slash commands registrados.");
 }
 
-YDL_OPTIONS = {
-    'format': 'bestaudio',
-    'noplaylist': True
-}
+// ================= MANEJADOR =================
+client.on("interactionCreate", async interaction => {
 
-# =========================
-# EVENTO READY
-# =========================
+    if (!interaction.isChatInputCommand()) return;
 
-@bot.event
-async def on_ready():
-    await bot.tree.sync()
-    print(f"Bot listo como {bot.user}")
+    const { commandName } = interaction;
 
-# =========================
-# NEMO_PDD (2 veces al dia)
-# =========================
+    // ================= PDD =================
+    if (commandName === "nemo_pdd") {
 
-@bot.tree.command(name="nemo_pdd", description="Palabra del dia (max 2 veces por usuario)")
-async def nemo_pdd(interaction: discord.Interaction):
+        const userId = interaction.user.id;
+        const today = new Date().toISOString().split("T")[0];
 
-    user_id = interaction.user.id
-    today = datetime.utcnow().strftime("%Y-%m-%d")
+        if (!pddUsage.has(userId)) {
+            pddUsage.set(userId, { date: today, uses: 0 });
+        }
 
-    if user_id not in pdd_usage:
-        pdd_usage[user_id] = [today, 0]
+        const data = pddUsage.get(userId);
 
-    stored_date, uses = pdd_usage[user_id]
+        if (data.date !== today) {
+            data.date = today;
+            data.uses = 0;
+        }
 
-    if stored_date != today:
-        pdd_usage[user_id] = [today, 0]
-        uses = 0
+        if (data.uses >= 2) {
+            return interaction.reply({
+                content: "Ya usaste la palabra del dia 2 veces hoy.",
+                ephemeral: true
+            });
+        }
 
-    if uses >= 2:
-        await interaction.response.send_message(
-            "Ya usaste la palabra del dia 2 veces hoy.",
-            ephemeral=True
-        )
-        return
+        const word = dailyWords[Math.floor(Math.random() * dailyWords.length)];
+        data.uses++;
 
-    word = random.choice(daily_words)
+        return interaction.reply(`📖 La palabra del dia es: **${word}**`);
+    }
 
-    pdd_usage[user_id][1] += 1
+    // ================= PLAY =================
+    if (commandName === "play") {
 
-    await interaction.response.send_message(
-        f"📖 La palabra del dia es: **{word}**"
-    )
+        const url = interaction.options.getString("url");
 
-# =========================
-# MUSICA - PLAY
-# =========================
+        if (!interaction.member.voice.channel) {
+            return interaction.reply({
+                content: "Debes estar en un canal de voz.",
+                ephemeral: true
+            });
+        }
 
-@bot.tree.command(name="play", description="Reproduce musica desde YouTube")
-@app_commands.describe(url="Link del video de YouTube")
-async def play(interaction: discord.Interaction, url: str):
+        await interaction.reply("🎵 Cargando musica...");
 
-    if not interaction.user.voice:
-        await interaction.response.send_message("Debes estar en un canal de voz.", ephemeral=True)
-        return
+        const channel = interaction.member.voice.channel;
 
-    channel = interaction.user.voice.channel
+        let connection = getVoiceConnection(interaction.guild.id);
 
-    if interaction.guild.voice_client is None:
-        await channel.connect()
-    else:
-        await interaction.guild.voice_client.move_to(channel)
+        if (!connection) {
+            connection = joinVoiceChannel({
+                channelId: channel.id,
+                guildId: channel.guild.id,
+                adapterCreator: channel.guild.voiceAdapterCreator
+            });
+        }
 
-    await interaction.response.send_message("Cargando musica...")
+        const stream = await play.stream(url);
+        const resource = createAudioResource(stream.stream, {
+            inputType: stream.type
+        });
 
-    vc = interaction.guild.voice_client
+        let player;
 
-    with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-        info = ydl.extract_info(url, download=False)
-        url2 = info['url']
-        source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
+        if (musicPlayers.has(interaction.guild.id)) {
+            player = musicPlayers.get(interaction.guild.id).player;
+        } else {
+            player = createAudioPlayer();
+            connection.subscribe(player);
+            musicPlayers.set(interaction.guild.id, { connection, player });
+        }
 
-        vc.play(source)
+        player.play(resource);
+    }
 
-# =========================
-# MUSICA - STOP
-# =========================
+    // ================= STOP =================
+    if (commandName === "stop") {
 
-@bot.tree.command(name="stop", description="Detiene la musica")
-async def stop(interaction: discord.Interaction):
+        const data = musicPlayers.get(interaction.guild.id);
 
-    vc = interaction.guild.voice_client
+        if (!data) {
+            return interaction.reply({
+                content: "No hay musica reproduciendose.",
+                ephemeral: true
+            });
+        }
 
-    if vc and vc.is_playing():
-        vc.stop()
-        await interaction.response.send_message("Musica detenida.")
-    else:
-        await interaction.response.send_message("No hay musica reproduciendose.", ephemeral=True)
+        data.player.stop();
 
-# =========================
-# MUSICA - LEAVE
-# =========================
+        return interaction.reply("⏹ Musica detenida.");
+    }
 
-@bot.tree.command(name="leave", description="Desconecta el bot del canal de voz")
-async def leave(interaction: discord.Interaction):
+    // ================= LEAVE =================
+    if (commandName === "leave") {
 
-    vc = interaction.guild.voice_client
+        const connection = getVoiceConnection(interaction.guild.id);
 
-    if vc:
-        await vc.disconnect()
-        await interaction.response.send_message("Me desconecte del canal de voz.")
-    else:
-        await interaction.response.send_message("No estoy en ningun canal.", ephemeral=True)
+        if (!connection) {
+            return interaction.reply({
+                content: "No estoy en un canal.",
+                ephemeral: true
+            });
+        }
 
-# =========================
-# TOKEN
-# =========================
+        connection.destroy();
+        musicPlayers.delete(interaction.guild.id);
 
-bot.run("AQUI_TU_TOKEN")
+        return interaction.reply("👋 Me desconecte del canal.");
+    }
+
+});
 
 // ================= BIENVENIDA + ANTI RAID =================
 let joinTimestamps = [];
@@ -391,5 +421,6 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
