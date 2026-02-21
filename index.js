@@ -368,8 +368,9 @@ async function changeBannerFromArt() {
 }
 
 // ================= LOGIN =================
-client.login(process.env.TOKEN);
+client.login(process.env.TOKEN)
+  .then(() => console.log("Bot iniciado correctamente"))
+  .catch(err => console.error("Error al iniciar:", err));
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
-
