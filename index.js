@@ -70,11 +70,11 @@ client.once("clientReady", async () => {
 
     // ===== ESTADOS ROTATIVOS =====
     const estados = [
-        " Ya no puedo ser maid :c",   // Estado 1
-        " Hola gente xd",   // Estado 2
-        " Ya no se q poner de estado realmente",   // Estado 3
-        " Recuerda q me creo MrRat0 xd",   // Estado 4
-        " Pagina Oficial: https://nemo-web.onrender.com"    // Estado 5
+        " Hola gente",   // Estado 1
+        " Ya no soy maid :c",   // Estado 2
+        " Sabias que los pitufos, papa pitufo, y pitufina, son pitufos",   // Estado 3
+        " Estoy... estoy procesando las cosas tan ATROZES que hizo P3t3r Scully...",   // Estado 4
+        " Suscribete a Nemo. Dale :D"    // Estado 5
     ];
 
     let index = 0;
@@ -98,22 +98,14 @@ client.once("clientReady", async () => {
     await changeBannerFromArt();
     setInterval(changeBannerFromArt, 10 * 60 * 1000);
 });
-// ================= SLASH COMMAND REGISTRATION =================
+// ================= SLASH COMMAND =================
 
 async function registerCommands() {
 
     const commands = [
         new SlashCommandBuilder()
             .setName("nemo_pdd")
-            .setDescription("Palabra del día"),
-
-        new SlashCommandBuilder()
-            .setName("nemo_ldd")
-            .setDescription("Letra del día"),
-
-        new SlashCommandBuilder()
-            .setName("nemo_counter")
-            .setDescription("Muestra estadísticas del canal de YouTube")
+            .setDescription("Palabra del día")
     ];
 
     const rest = new REST({ version: "10" }).setToken(TOKEN);
@@ -123,159 +115,35 @@ async function registerCommands() {
         { body: commands.map(cmd => cmd.toJSON()) }
     );
 
-    console.log("Slash commands registered.");
+    console.log("Slash command registrado.");
 }
-
-
-// ================= CONFIG =================
-
-const YOUTUBE_CHANNEL_ID = "UCizsH-_19uxQPhyPhjQFDkg";
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
 const palabras = [
     "Oscuridad",
     "Sombras",
     "Destino",
     "Silencio",
-    "Animatronico",
+    "Animatrónico",
     "Sobrevivir",
     "Pesadilla",
-    "Vigilia"
+    "Vigilia",
+    "Ecos",
+    "Susurro"
 ];
 
-const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-
-const cooldowns = {
-    pdd: 0,
-    ldd: 0
-};
-
-const DAY = 24 * 60 * 60 * 1000;
-
-
-// ================= INTERACTION HANDLER =================
+let lastUsedPDD = 0;
 
 client.on("interactionCreate", async interaction => {
 
     if (!interaction.isChatInputCommand()) return;
 
-    const now = Date.now();
-
-    // ===== PDD =====
     if (interaction.commandName === "nemo_pdd") {
 
-        if (now - cooldowns.pdd < DAY) {
-            return interaction.reply({
-                content: "This command was already used today.",
-                flags: MessageFlags.Ephemeral
-            });
-        }
+        const now = Date.now();
 
-        cooldowns.pdd = now;
+        if (now - lastUsedPDD < 24 * 60 * 60 * 1000) {
 
-        const palabra = palabras[Math.floor(Math.random() * palabras.length)];
-
-        const embed = new EmbedBuilder()
-            .setTitle("Word of the Day")
-            .setDescription(`**${palabra}**`)
-            .setColor(0x2b2d31)
-            .setTimestamp();
-
-        return interaction.reply({ embeds: [embed] });
-    }
-
-    // ===== LDD =====
-    if (interaction.commandName === "nemo_ldd") {
-
-        if (now - cooldowns.ldd < DAY) {
-            return interaction.reply({
-                content: "This command was already used today.",
-                flags: MessageFlags.Ephemeral
-            });
-        }
-
-        cooldowns.ldd = now;
-
-        const letra = letras[Math.floor(Math.random() * letras.length)];
-
-        const embed = new EmbedBuilder()
-            .setTitle("Letter of the Day")
-            .setDescription(`**${letra}**`)
-            .setColor(0x5865f2)
-            .setTimestamp();
-
-        return interaction.reply({ embeds: [embed] });
-    }
-
-    // ===== YOUTUBE COUNTER =====
-    if (interaction.commandName === "nemo_counter") {
-
-        try {
-
-            const response = await fetch(
-                `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${YOUTUBE_CHANNEL_ID}&key=${YOUTUBE_API_KEY}`
-            );
-
-            const data = await response.json();
-
-            if (!data.items || data.items.length === 0) {
-                return interaction.reply({
-                    content: "Channel not found.",
-                    flags: MessageFlags.Ephemeral
-                });
-            }
-
-            const stats = data.items[0].statistics;
-
-            if (!stats.subscriberCount) {
-                return interaction.reply({
-                    content: "Subscriber count is hidden.",
-                    flags: MessageFlags.Ephemeral
-                });
-            }
-
-            const subs = Number(stats.subscriberCount).toLocaleString();
-            const views = Number(stats.viewCount).toLocaleString();
-            const videos = Number(stats.videoCount).toLocaleString();
-
-            const embed = new EmbedBuilder()
-                .setTitle("YouTube Channel Stats")
-                .addFields(
-                    { name: "Subscribers", value: subs, inline: true },
-                    { name: "Views", value: views, inline: true },
-                    { name: "Videos", value: videos, inline: true }
-                )
-                .setColor(0xff0000)
-                .setTimestamp();
-
-            return interaction.reply({ embeds: [embed] });
-
-        } catch (error) {
-            console.error("YouTube API error:", error);
-
-            return interaction.reply({
-                content: "Error fetching YouTube data.",
-                flags: MessageFlags.Ephemeral
-            });
-        }
-    }
-
-});
-
-// ================= INTERACTION HANDLER =================
-
-client.on("interactionCreate", async interaction => {
-
-    if (!interaction.isChatInputCommand()) return;
-
-    const now = Date.now();
-
-    // ================= PDD =================
-    if (interaction.commandName === "nemo_pdd") {
-
-        if (now - cooldowns.pdd < DAY) {
-
-            const remaining = DAY - (now - cooldowns.pdd);
+            const remaining = 24 * 60 * 60 * 1000 - (now - lastUsedPDD);
             const hours = Math.floor(remaining / (1000 * 60 * 60));
 
             return interaction.reply({
@@ -284,7 +152,7 @@ client.on("interactionCreate", async interaction => {
             });
         }
 
-        cooldowns.pdd = now;
+        lastUsedPDD = now;
 
         const palabra = palabras[Math.floor(Math.random() * palabras.length)];
 
@@ -296,76 +164,6 @@ client.on("interactionCreate", async interaction => {
 
         return interaction.reply({ embeds: [embed] });
     }
-
-
-    // ================= LDD =================
-    if (interaction.commandName === "nemo_ldd") {
-
-        if (now - cooldowns.ldd < DAY) {
-
-            const remaining = DAY - (now - cooldowns.ldd);
-            const hours = Math.floor(remaining / (1000 * 60 * 60));
-
-            return interaction.reply({
-                content: `⏳ Ya se usó hoy. Espera ${hours} horas.`,
-                flags: MessageFlags.Ephemeral
-            });
-        }
-
-        cooldowns.ldd = now;
-
-        const letra = letras[Math.floor(Math.random() * letras.length)];
-
-        const embed = new EmbedBuilder()
-            .setTitle("🔤 Letra del Día")
-            .setDescription(`La letra de hoy es:\n\n**${letra}**`)
-            .setColor(0x5865f2)
-            .setTimestamp();
-
-        return interaction.reply({ embeds: [embed] });
-    }
-
-
-    // ================= NEMO COUNTER =================
-    if (interaction.commandName === "nemo_counter") {
-
-        if (!interaction.guild) {
-            return interaction.reply({
-                content: "Este comando solo funciona en servidores.",
-                flags: MessageFlags.Ephemeral
-            });
-        }
-
-        try {
-
-            const channel = await interaction.guild.channels.fetch(NEMO_CHANNEL_ID);
-
-            if (!channel) {
-                return interaction.reply({
-                    content: "No encontré el canal.",
-                    flags: MessageFlags.Ephemeral
-                });
-            }
-
-            const memberCount = interaction.guild.memberCount;
-
-            const embed = new EmbedBuilder()
-                .setTitle("📊 Contador de Subs")
-                .setDescription(`Actualmente hay:\n\n👥 **${memberCount} miembros**`)
-                .setColor(0x00bfff)
-                .setTimestamp();
-
-            return interaction.reply({ embeds: [embed] });
-
-        } catch (error) {
-            console.error(error);
-            return interaction.reply({
-                content: "Error al obtener el canal.",
-                flags: MessageFlags.Ephemeral
-            });
-        }
-    }
-
 });
 
 // ================= BIENVENIDA + ANTI RAID =================
@@ -394,8 +192,8 @@ client.on("guildMemberAdd", async (member) => {
     const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
     if (channel) {
         const embed = new EmbedBuilder()
-            .setTitle("Bienvenido Usuario!")
-            .setDescription(`Hola ${member}, y bienvenido a Nemo´s, este es el servidor oficial de Nemo_704.`)
+            .setTitle("Bienvenido!")
+            .setDescription(`Hola ${member}, disfruta tu estancia.`)
             .setColor(0x00ff99)
             .setThumbnail(member.user.displayAvatarURL())
             .setTimestamp();
@@ -407,7 +205,7 @@ client.on("guildMemberAdd", async (member) => {
     if (role) await member.roles.add(role);
 });
 
-// ================= AUTOMOD + RESPUESTAS =================
+// ================= AUTOMOD =================
 const userMessages = new Map();
 
 client.on("messageCreate", async (message) => {
@@ -419,35 +217,19 @@ client.on("messageCreate", async (message) => {
     const member = message.member;
     if (!member) return;
 
-    // ===== RESPUESTAS AUTOMÁTICAS =====
-    const contenido = message.content.toLowerCase();
-
-    if (
-        contenido.includes("hola bot") ||
-        contenido.includes("hola nemo bot") ||
-        contenido.includes("Hola Nemo Bot") ||
-        contenido.includes("Hola bot") 
-    ) {
-        return message.reply("Hola usuario, ¿Como estas? Por que yo bastante bien, aunque no me lo preguntaron, que maleducados, los voy a acusar con su mamá para que les de sus nalgadas.");
-    }
-
-    // ===== IGNORAR STAFF =====
     if (member.roles.cache.some(role => STAFF_ROLE_NAMES.includes(role.name))) return;
 
-    // ===== ANTI LINKS =====
     if (/https?:\/\/|www\./i.test(message.content)) {
         await message.delete().catch(()=>{});
         return;
     }
 
-    // ===== MENTION MASIVO =====
     if (message.mentions.users.size >= MENTION_LIMIT) {
         await message.delete().catch(()=>{});
         await member.timeout(MUTE_TIME, "Mention masivo").catch(()=>{});
         return;
     }
 
-    // ===== SPAM =====
     const now = Date.now();
 
     if (!userMessages.has(message.author.id)) {
@@ -514,20 +296,3 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
