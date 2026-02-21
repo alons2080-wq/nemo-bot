@@ -110,17 +110,6 @@ client.once("clientReady", async () => {
     setInterval(changeBannerFromArt, 10 * 60 * 1000);
 });
 // ================= SLASH COMMANDS =================
-
-const { 
-    joinVoiceChannel, 
-    createAudioPlayer, 
-    createAudioResource,
-    getVoiceConnection,
-    AudioPlayerStatus 
-} = require('@discordjs/voice');
-
-const play = require('play-dl');
-
 // ===== PALABRA DEL DIA =====
 const dailyWords = [
     "Ocean",
@@ -421,6 +410,7 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
 
