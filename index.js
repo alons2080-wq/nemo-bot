@@ -1,7 +1,8 @@
 const { 
     joinVoiceChannel, 
     createAudioPlayer, 
-    createAudioResource, 
+    createAudioResource,
+    getVoiceConnection,
     AudioPlayerStatus 
 } = require('@discordjs/voice');
 
@@ -410,6 +411,7 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
 
