@@ -1,3 +1,5 @@
+require("ffmpeg-static");
+
 const {
     joinVoiceChannel,
     createAudioPlayer,
@@ -410,5 +412,6 @@ client.login(process.env.TOKEN)
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
