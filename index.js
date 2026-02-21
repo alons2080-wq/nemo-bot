@@ -1,4 +1,15 @@
 const { 
+    joinVoiceChannel, 
+    createAudioPlayer, 
+    createAudioResource, 
+    AudioPlayerStatus 
+} = require('@discordjs/voice');
+
+const play = require('play-dl');
+
+const queues = new Map();
+
+const { 
     Client, 
     GatewayIntentBits, 
     EmbedBuilder, 
@@ -98,73 +109,157 @@ client.once("clientReady", async () => {
     await changeBannerFromArt();
     setInterval(changeBannerFromArt, 10 * 60 * 1000);
 });
-// ================= SLASH COMMAND =================
+# =========================
+# SLASH COMMANDS - NEMO
+# =========================
 
-async function registerCommands() {
+import discord
+from discord import app_commands
+from discord.ext import commands
+import yt_dlp
+import asyncio
+import random
+from datetime import datetime
 
-    const commands = [
-        new SlashCommandBuilder()
-            .setName("nemo_pdd")
-            .setDescription("Palabra del día")
-    ];
+intents = discord.Intents.default()
+intents.message_content = True
+intents.voice_states = True
 
-    const rest = new REST({ version: "10" }).setToken(TOKEN);
+bot = commands.Bot(command_prefix="!", intents=intents)
 
-    await rest.put(
-        Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
-        { body: commands.map(cmd => cmd.toJSON()) }
-    );
+# =========================
+# VARIABLES GLOBALES
+# =========================
 
-    console.log("Slash command registrado.");
+# -------- PALABRA DEL DIA --------
+daily_words = [
+    "Ocean",
+    "Curiosity",
+    "Dream",
+    "Innovation",
+    "Future"
+]
+
+pdd_usage = {}  # {user_id: [date_string, uses]}
+
+# -------- MUSICA --------
+FFMPEG_OPTIONS = {
+    'options': '-vn'
 }
 
-const palabras = [
-    "Oscuridad",
-    "Sombras",
-    "Destino",
-    "Silencio",
-    "Animatrónico",
-    "Sobrevivir",
-    "Pesadilla",
-    "Vigilia",
-    "Ecos",
-    "Susurro"
-];
+YDL_OPTIONS = {
+    'format': 'bestaudio',
+    'noplaylist': True
+}
 
-let lastUsedPDD = 0;
+# =========================
+# EVENTO READY
+# =========================
 
-client.on("interactionCreate", async interaction => {
+@bot.event
+async def on_ready():
+    await bot.tree.sync()
+    print(f"Bot listo como {bot.user}")
 
-    if (!interaction.isChatInputCommand()) return;
+# =========================
+# NEMO_PDD (2 veces al dia)
+# =========================
 
-    if (interaction.commandName === "nemo_pdd") {
+@bot.tree.command(name="nemo_pdd", description="Palabra del dia (max 2 veces por usuario)")
+async def nemo_pdd(interaction: discord.Interaction):
 
-        const now = Date.now();
+    user_id = interaction.user.id
+    today = datetime.utcnow().strftime("%Y-%m-%d")
 
-        if (now - lastUsedPDD < 24 * 60 * 60 * 1000) {
+    if user_id not in pdd_usage:
+        pdd_usage[user_id] = [today, 0]
 
-            const remaining = 24 * 60 * 60 * 1000 - (now - lastUsedPDD);
-            const hours = Math.floor(remaining / (1000 * 60 * 60));
+    stored_date, uses = pdd_usage[user_id]
 
-            return interaction.reply({
-                content: `⏳ Ya se usó hoy. Espera ${hours} horas.`,
-                flags: MessageFlags.Ephemeral
-            });
-        }
+    if stored_date != today:
+        pdd_usage[user_id] = [today, 0]
+        uses = 0
 
-        lastUsedPDD = now;
+    if uses >= 2:
+        await interaction.response.send_message(
+            "Ya usaste la palabra del dia 2 veces hoy.",
+            ephemeral=True
+        )
+        return
 
-        const palabra = palabras[Math.floor(Math.random() * palabras.length)];
+    word = random.choice(daily_words)
 
-        const embed = new EmbedBuilder()
-            .setTitle("📖 Palabra del Día")
-            .setDescription(`La palabra de hoy es:\n\n**${palabra}**`)
-            .setColor(0x2b2d31)
-            .setTimestamp();
+    pdd_usage[user_id][1] += 1
 
-        return interaction.reply({ embeds: [embed] });
-    }
-});
+    await interaction.response.send_message(
+        f"📖 La palabra del dia es: **{word}**"
+    )
+
+# =========================
+# MUSICA - PLAY
+# =========================
+
+@bot.tree.command(name="play", description="Reproduce musica desde YouTube")
+@app_commands.describe(url="Link del video de YouTube")
+async def play(interaction: discord.Interaction, url: str):
+
+    if not interaction.user.voice:
+        await interaction.response.send_message("Debes estar en un canal de voz.", ephemeral=True)
+        return
+
+    channel = interaction.user.voice.channel
+
+    if interaction.guild.voice_client is None:
+        await channel.connect()
+    else:
+        await interaction.guild.voice_client.move_to(channel)
+
+    await interaction.response.send_message("Cargando musica...")
+
+    vc = interaction.guild.voice_client
+
+    with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+        info = ydl.extract_info(url, download=False)
+        url2 = info['url']
+        source = await discord.FFmpegOpusAudio.from_probe(url2, **FFMPEG_OPTIONS)
+
+        vc.play(source)
+
+# =========================
+# MUSICA - STOP
+# =========================
+
+@bot.tree.command(name="stop", description="Detiene la musica")
+async def stop(interaction: discord.Interaction):
+
+    vc = interaction.guild.voice_client
+
+    if vc and vc.is_playing():
+        vc.stop()
+        await interaction.response.send_message("Musica detenida.")
+    else:
+        await interaction.response.send_message("No hay musica reproduciendose.", ephemeral=True)
+
+# =========================
+# MUSICA - LEAVE
+# =========================
+
+@bot.tree.command(name="leave", description="Desconecta el bot del canal de voz")
+async def leave(interaction: discord.Interaction):
+
+    vc = interaction.guild.voice_client
+
+    if vc:
+        await vc.disconnect()
+        await interaction.response.send_message("Me desconecte del canal de voz.")
+    else:
+        await interaction.response.send_message("No estoy en ningun canal.", ephemeral=True)
+
+# =========================
+# TOKEN
+# =========================
+
+bot.run("AQUI_TU_TOKEN")
 
 // ================= BIENVENIDA + ANTI RAID =================
 let joinTimestamps = [];
@@ -296,4 +391,5 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
