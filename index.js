@@ -1,13 +1,4 @@
 const {
-    joinVoiceChannel,
-    createAudioPlayer,
-    createAudioResource,
-    getVoiceConnection
-} = require("@discordjs/voice");
-
-const play = require("play-dl");
-
-const {
     Client,
     GatewayIntentBits,
     EmbedBuilder,
@@ -54,7 +45,7 @@ const MUTE_TIME = 10 * 60 * 1000;
 const RAID_LIMIT = 5;
 const RAID_TIME = 10000;
 
-// ================== EXPRESS (Railway) ==================
+// ================== EXPRESS ==================
 const app = express();
 app.get("/", (req, res) => res.send("Bot activo"));
 app.listen(process.env.PORT || 8080);
@@ -65,13 +56,11 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildVoiceStates
+        GatewayIntentBits.MessageContent
     ]
 });
 
 // ================== MAPS ==================
-const musicPlayers = new Map();
 const pddUsage = new Map();
 const userMessages = new Map();
 let joinTimestamps = [];
@@ -81,7 +70,6 @@ client.once("ready", async () => {
 
     console.log(`✅ Logueado como ${client.user.tag}`);
 
-    // ===== ESTADOS ROTATIVOS =====
     const estados = [
         "Hola gente",
         "Ya no soy maid :c",
@@ -105,39 +93,20 @@ client.once("ready", async () => {
     }
 
     cambiarEstado();
-    setInterval(cambiarEstado, 60 * 1000);
+    setInterval(cambiarEstado, 60000);
 
     await registerCommands();
     await changeBannerFromArt();
-    setInterval(changeBannerFromArt, 10 * 60 * 1000);
+    setInterval(changeBannerFromArt, 600000);
 });
 
 // ================= REGISTRAR SLASH =================
 async function registerCommands() {
 
     const commands = [
-
         new SlashCommandBuilder()
             .setName("nemo_pdd")
-            .setDescription("Palabra del día (2 usos diarios)"),
-
-        new SlashCommandBuilder()
-            .setName("play")
-            .setDescription("Reproduce música desde YouTube")
-            .addStringOption(option =>
-                option.setName("url")
-                    .setDescription("Link del video")
-                    .setRequired(true)
-            ),
-
-        new SlashCommandBuilder()
-            .setName("stop")
-            .setDescription("Detiene la música"),
-
-        new SlashCommandBuilder()
-            .setName("leave")
-            .setDescription("Desconecta el bot del canal")
-
+            .setDescription("Palabra del día (2 usos diarios)")
     ].map(cmd => cmd.toJSON());
 
     const rest = new REST({ version: "10" }).setToken(TOKEN);
@@ -155,10 +124,7 @@ client.on("interactionCreate", async interaction => {
 
     if (!interaction.isChatInputCommand()) return;
 
-    const { commandName } = interaction;
-
-    // ===== PALABRA DEL DIA =====
-    if (commandName === "nemo_pdd") {
+    if (interaction.commandName === "nemo_pdd") {
 
         const userId = interaction.user.id;
         const today = new Date().toISOString().split("T")[0];
@@ -181,114 +147,14 @@ client.on("interactionCreate", async interaction => {
             });
         }
 
-        const words = ["Ocean", "Curiosity", "Dream", "Innovation", "Future"];
+        const words = ["flippy" /* No sabia que mas poner entonces puse flippy xd */, "Freddy", "QUESUEÑOHACEESTOMEPASAPORHACERUNBOTDENEMOXDD", "Hola", "Mano"];
         const word = words[Math.floor(Math.random() * words.length)];
 
         data.uses++;
 
-        return interaction.reply(`📖 La palabra del día es: **${word}**`);
+        interaction.reply(`📖 La palabra del día es: **${word}**`);
     }
-
-    // ===== PLAY =====
-if (commandName === "play") {
-
-    if (!interaction.member.voice.channel) {
-        return interaction.reply({
-            content: "Debes estar en un canal de voz.",
-            flags: 64
-        });
-    }
-
-    const url = interaction.options.getString("url");
-
-    if (!url) {
-        return interaction.reply({
-            content: "Debes proporcionar un link válido.",
-            flags: 64
-        });
-    }
-
-    await interaction.deferReply();
-
-    try {
-
-        const channel = interaction.member.voice.channel;
-
-        let connection = getVoiceConnection(interaction.guild.id);
-
-        if (!connection) {
-            connection = joinVoiceChannel({
-                channelId: channel.id,
-                guildId: channel.guild.id,
-                adapterCreator: channel.guild.voiceAdapterCreator
-            });
-        }
-
-        let stream;
-
-        if (play.yt_validate(url) === "video") {
-            stream = await play.stream(url);
-        } else {
-            return interaction.editReply("El link no es válido.");
-        }
-
-        const resource = createAudioResource(stream.stream, {
-            inputType: stream.type
-        });
-
-        let player;
-
-        if (musicPlayers.has(interaction.guild.id)) {
-            player = musicPlayers.get(interaction.guild.id).player;
-        } else {
-            player = createAudioPlayer();
-            connection.subscribe(player);
-            musicPlayers.set(interaction.guild.id, { connection, player });
-        }
-
-        player.play(resource);
-
-        return interaction.editReply("🎵 Reproduciendo música.");
-
-    } catch (err) {
-        console.error("Error en /play:", err);
-        return interaction.editReply("Ocurrió un error al intentar reproducir.");
-    }
-}
-
-    // ===== STOP =====
-if (commandName === "stop") {
-
-    const data = musicPlayers.get(interaction.guild.id);
-
-    if (!data) {
-        return interaction.reply({
-            content: "No hay música reproduciéndose.",
-            flags: 64
-        });
-    }
-
-    data.player.stop();
-    return interaction.reply("⏹ Música detenida.");
-}
-    
-    // ===== LEAVE =====
-if (commandName === "leave") {
-
-    const connection = getVoiceConnection(interaction.guild.id);
-
-    if (!connection) {
-        return interaction.reply({
-            content: "No estoy en un canal.",
-            flags: 64
-        });
-    }
-
-    connection.destroy();
-    musicPlayers.delete(interaction.guild.id);
-
-    return interaction.reply("👋 Me desconecté del canal.");
-}
+});
 
 // ================= BIENVENIDA + ANTI RAID =================
 client.on("guildMemberAdd", async member => {
@@ -325,7 +191,11 @@ client.on("guildMemberAdd", async member => {
     }
 
     const role = member.guild.roles.cache.find(r => r.name === ROLE_NAME);
-    if (role) await member.roles.add(role);
+    if (role) {
+        try {
+            await member.roles.add(role);
+        } catch {}
+    }
 });
 
 // ================= AUTOMOD =================
@@ -339,20 +209,17 @@ client.on("messageCreate", async message => {
 
     if (member.roles.cache.some(r => STAFF_ROLE_NAMES.includes(r.name))) return;
 
-    // Anti links
     if (/https?:\/\/|www\./i.test(message.content)) {
         await message.delete().catch(() => {});
         return;
     }
 
-    // Anti menciones
     if (message.mentions.users.size >= MENTION_LIMIT) {
         await message.delete().catch(() => {});
         await member.timeout(MUTE_TIME, "Mention masivo").catch(() => {});
         return;
     }
 
-    // Anti spam
     const now = Date.now();
 
     if (!userMessages.has(message.author.id))
@@ -365,7 +232,9 @@ client.on("messageCreate", async message => {
     userMessages.set(message.author.id, recent);
 
     if (recent.length >= SPAM_LIMIT) {
-        try { await member.ban({ reason: "Spam automático" }); } catch {}
+        try {
+            await member.timeout(5 * 60 * 1000, "Spam detectado");
+        } catch {}
         userMessages.delete(message.author.id);
     }
 });
@@ -394,9 +263,10 @@ async function changeBannerFromArt() {
         if (!images.length) return;
 
         const randomImage = images[Math.floor(Math.random() * images.length)];
-        await client.user.setBanner(randomImage);
 
-        console.log("✅ Banner actualizado");
+        try {
+            await client.user.setBanner(randomImage);
+        } catch {}
 
     } catch (err) {
         console.error("Error cambiando banner:", err);
@@ -404,13 +274,9 @@ async function changeBannerFromArt() {
 }
 
 // ================= LOGIN =================
-client.login(process.env.TOKEN)
+client.login(TOKEN)
   .then(() => console.log("Bot iniciado correctamente"))
   .catch(err => console.error("Error al iniciar:", err));
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
-
-
-
-
