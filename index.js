@@ -190,14 +190,27 @@ client.on("interactionCreate", async interaction => {
     }
 
     // ===== PLAY =====
-    if (commandName === "play") {
+if (commandName === "play") {
 
-        if (!interaction.member.voice.channel)
-            return interaction.reply({ content: "Debes estar en un canal de voz.", ephemeral: true });
+    if (!interaction.member.voice.channel) {
+        return interaction.reply({
+            content: "Debes estar en un canal de voz.",
+            flags: 64
+        });
+    }
 
-        const url = interaction.options.getString("url");
+    const url = interaction.options.getString("url");
 
-        await interaction.reply("🎵 Cargando música...");
+    if (!url) {
+        return interaction.reply({
+            content: "Debes proporcionar un link válido.",
+            flags: 64
+        });
+    }
+
+    await interaction.deferReply();
+
+    try {
 
         const channel = interaction.member.voice.channel;
 
@@ -211,8 +224,17 @@ client.on("interactionCreate", async interaction => {
             });
         }
 
-        const stream = await play.stream(url);
-        const resource = createAudioResource(stream.stream, { inputType: stream.type });
+        let stream;
+
+        if (play.yt_validate(url) === "video") {
+            stream = await play.stream(url);
+        } else {
+            return interaction.editReply("El link no es válido.");
+        }
+
+        const resource = createAudioResource(stream.stream, {
+            inputType: stream.type
+        });
 
         let player;
 
@@ -225,7 +247,14 @@ client.on("interactionCreate", async interaction => {
         }
 
         player.play(resource);
+
+        return interaction.editReply("🎵 Reproduciendo música.");
+
+    } catch (err) {
+        console.error("Error en /play:", err);
+        return interaction.editReply("Ocurrió un error al intentar reproducir.");
     }
+}
 
     // ===== STOP =====
     if (commandName === "stop") {
@@ -374,3 +403,4 @@ client.login(process.env.TOKEN)
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
