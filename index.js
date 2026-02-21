@@ -257,31 +257,38 @@ if (commandName === "play") {
 }
 
     // ===== STOP =====
-    if (commandName === "stop") {
+if (commandName === "stop") {
 
-        const data = musicPlayers.get(interaction.guild.id);
+    const data = musicPlayers.get(interaction.guild.id);
 
-        if (!data)
-            return interaction.reply({ content: "No hay música reproduciéndose.", ephemeral: true });
-
-        data.player.stop();
-        return interaction.reply("⏹ Música detenida.");
+    if (!data) {
+        return interaction.reply({
+            content: "No hay música reproduciéndose.",
+            flags: 64
+        });
     }
 
+    data.player.stop();
+    return interaction.reply("⏹ Música detenida.");
+}
+    
     // ===== LEAVE =====
-    if (commandName === "leave") {
+if (commandName === "leave") {
 
-        const connection = getVoiceConnection(interaction.guild.id);
+    const connection = getVoiceConnection(interaction.guild.id);
 
-        if (!connection)
-            return interaction.reply({ content: "No estoy en un canal.", ephemeral: true });
-
-        connection.destroy();
-        musicPlayers.delete(interaction.guild.id);
-
-        return interaction.reply("👋 Me desconecté del canal.");
+    if (!connection) {
+        return interaction.reply({
+            content: "No estoy en un canal.",
+            flags: 64
+        });
     }
-});
+
+    connection.destroy();
+    musicPlayers.delete(interaction.guild.id);
+
+    return interaction.reply("👋 Me desconecté del canal.");
+}
 
 // ================= BIENVENIDA + ANTI RAID =================
 client.on("guildMemberAdd", async member => {
@@ -403,4 +410,5 @@ client.login(process.env.TOKEN)
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
