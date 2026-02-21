@@ -1,27 +1,23 @@
-const { 
-    joinVoiceChannel, 
-    createAudioPlayer, 
+const {
+    joinVoiceChannel,
+    createAudioPlayer,
     createAudioResource,
-    getVoiceConnection,
-    AudioPlayerStatus 
-} = require('@discordjs/voice');
+    getVoiceConnection
+} = require("@discordjs/voice");
 
-const play = require('play-dl');
+const play = require("play-dl");
 
-const queues = new Map();
-
-const { 
-    Client, 
-    GatewayIntentBits, 
-    EmbedBuilder, 
+const {
+    Client,
+    GatewayIntentBits,
+    EmbedBuilder,
     ActivityType,
     REST,
     Routes,
-    SlashCommandBuilder,
-    MessageFlags
-} = require('discord.js');
+    SlashCommandBuilder
+} = require("discord.js");
 
-const express = require('express');
+const express = require("express");
 
 // ================== CONFIG ==================
 const TOKEN = process.env.TOKEN;
@@ -57,36 +53,41 @@ const MUTE_TIME = 10 * 60 * 1000;
 
 const RAID_LIMIT = 5;
 const RAID_TIME = 10000;
-// ============================================
 
-
-// ===== Railway Web Server =====
+// ================== EXPRESS (Railway) ==================
 const app = express();
 app.get("/", (req, res) => res.send("Bot activo"));
 app.listen(process.env.PORT || 8080);
 
-// ===== Cliente =====
+// ================== CLIENT ==================
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildVoiceStates
     ]
 });
 
-// ================= READY =================
-client.once("clientReady", async () => {
+// ================== MAPS ==================
+const musicPlayers = new Map();
+const pddUsage = new Map();
+const userMessages = new Map();
+let joinTimestamps = [];
 
-    console.log(`Logged in as ${client.user.tag}`);
+// ================= READY =================
+client.once("ready", async () => {
+
+    console.log(`✅ Logueado como ${client.user.tag}`);
 
     // ===== ESTADOS ROTATIVOS =====
     const estados = [
-        " Hola gente",   // Estado 1
-        " Ya no soy maid :c",   // Estado 2
-        " Sabias que los pitufos, papa pitufo, y pitufina, son pitufos",   // Estado 3
-        " Hola papulince",   // Estado 4
-        " Suscribete a Nemo. Dale :D"    // Estado 5
+        "Hola gente",
+        "Ya no soy maid :c",
+        "Sabias que los pitufos son pitufos",
+        "Hola papulince",
+        "Suscribete a Nemo"
     ];
 
     let index = 0;
@@ -103,40 +104,26 @@ client.once("clientReady", async () => {
         index = (index + 1) % estados.length;
     }
 
-    cambiarEstado(); // Ejecuta inmediatamente
-    setInterval(cambiarEstado, 60 * 1000); // Cambia cada 1 minuto
+    cambiarEstado();
+    setInterval(cambiarEstado, 60 * 1000);
 
     await registerCommands();
     await changeBannerFromArt();
     setInterval(changeBannerFromArt, 10 * 60 * 1000);
 });
-// ================= SLASH COMMANDS =================
-// ===== PALABRA DEL DIA =====
-const dailyWords = [
-    "Ocean",
-    "Curiosity",
-    "Dream",
-    "Innovation",
-    "Future"
-];
 
-const pddUsage = new Map(); // userId -> { date, uses }
-
-// ===== MUSICA =====
-const musicPlayers = new Map(); // guildId -> { connection, player }
-
-// ================= REGISTRAR COMANDOS =================
+// ================= REGISTRAR SLASH =================
 async function registerCommands() {
 
     const commands = [
 
         new SlashCommandBuilder()
             .setName("nemo_pdd")
-            .setDescription("Palabra del dia (max 2 veces por usuario)"),
+            .setDescription("Palabra del día (2 usos diarios)"),
 
         new SlashCommandBuilder()
             .setName("play")
-            .setDescription("Reproduce musica desde YouTube")
+            .setDescription("Reproduce música desde YouTube")
             .addStringOption(option =>
                 option.setName("url")
                     .setDescription("Link del video")
@@ -145,11 +132,11 @@ async function registerCommands() {
 
         new SlashCommandBuilder()
             .setName("stop")
-            .setDescription("Detiene la musica"),
+            .setDescription("Detiene la música"),
 
         new SlashCommandBuilder()
             .setName("leave")
-            .setDescription("Desconecta el bot del canal de voz")
+            .setDescription("Desconecta el bot del canal")
 
     ].map(cmd => cmd.toJSON());
 
@@ -160,17 +147,17 @@ async function registerCommands() {
         { body: commands }
     );
 
-    console.log("Slash commands registrados.");
+    console.log("✅ Slash commands registrados");
 }
 
-// ================= MANEJADOR =================
+// ================= INTERACCIONES =================
 client.on("interactionCreate", async interaction => {
 
     if (!interaction.isChatInputCommand()) return;
 
     const { commandName } = interaction;
 
-    // ================= PDD =================
+    // ===== PALABRA DEL DIA =====
     if (commandName === "nemo_pdd") {
 
         const userId = interaction.user.id;
@@ -189,30 +176,28 @@ client.on("interactionCreate", async interaction => {
 
         if (data.uses >= 2) {
             return interaction.reply({
-                content: "Ya usaste la palabra del dia 2 veces hoy.",
+                content: "Ya usaste la palabra del día 2 veces hoy.",
                 ephemeral: true
             });
         }
 
-        const word = dailyWords[Math.floor(Math.random() * dailyWords.length)];
+        const words = ["Ocean", "Curiosity", "Dream", "Innovation", "Future"];
+        const word = words[Math.floor(Math.random() * words.length)];
+
         data.uses++;
 
-        return interaction.reply(`📖 La palabra del dia es: **${word}**`);
+        return interaction.reply(`📖 La palabra del día es: **${word}**`);
     }
 
-    // ================= PLAY =================
+    // ===== PLAY =====
     if (commandName === "play") {
+
+        if (!interaction.member.voice.channel)
+            return interaction.reply({ content: "Debes estar en un canal de voz.", ephemeral: true });
 
         const url = interaction.options.getString("url");
 
-        if (!interaction.member.voice.channel) {
-            return interaction.reply({
-                content: "Debes estar en un canal de voz.",
-                ephemeral: true
-            });
-        }
-
-        await interaction.reply("🎵 Cargando musica...");
+        await interaction.reply("🎵 Cargando música...");
 
         const channel = interaction.member.voice.channel;
 
@@ -227,9 +212,7 @@ client.on("interactionCreate", async interaction => {
         }
 
         const stream = await play.stream(url);
-        const resource = createAudioResource(stream.stream, {
-            inputType: stream.type
-        });
+        const resource = createAudioResource(stream.stream, { inputType: stream.type });
 
         let player;
 
@@ -244,51 +227,39 @@ client.on("interactionCreate", async interaction => {
         player.play(resource);
     }
 
-    // ================= STOP =================
+    // ===== STOP =====
     if (commandName === "stop") {
 
         const data = musicPlayers.get(interaction.guild.id);
 
-        if (!data) {
-            return interaction.reply({
-                content: "No hay musica reproduciendose.",
-                ephemeral: true
-            });
-        }
+        if (!data)
+            return interaction.reply({ content: "No hay música reproduciéndose.", ephemeral: true });
 
         data.player.stop();
-
-        return interaction.reply("⏹ Musica detenida.");
+        return interaction.reply("⏹ Música detenida.");
     }
 
-    // ================= LEAVE =================
+    // ===== LEAVE =====
     if (commandName === "leave") {
 
         const connection = getVoiceConnection(interaction.guild.id);
 
-        if (!connection) {
-            return interaction.reply({
-                content: "No estoy en un canal.",
-                ephemeral: true
-            });
-        }
+        if (!connection)
+            return interaction.reply({ content: "No estoy en un canal.", ephemeral: true });
 
         connection.destroy();
         musicPlayers.delete(interaction.guild.id);
 
-        return interaction.reply("👋 Me desconecte del canal.");
+        return interaction.reply("👋 Me desconecté del canal.");
     }
-
 });
 
 // ================= BIENVENIDA + ANTI RAID =================
-let joinTimestamps = [];
-
-client.on("guildMemberAdd", async (member) => {
+client.on("guildMemberAdd", async member => {
 
     const now = Date.now();
     joinTimestamps.push(now);
-    joinTimestamps = joinTimestamps.filter(time => now - time < RAID_TIME);
+    joinTimestamps = joinTimestamps.filter(t => now - t < RAID_TIME);
 
     if (joinTimestamps.length >= RAID_LIMIT) {
 
@@ -305,6 +276,7 @@ client.on("guildMemberAdd", async (member) => {
     }
 
     const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
+
     if (channel) {
         const embed = new EmbedBuilder()
             .setTitle("Bienvenido!")
@@ -321,52 +293,50 @@ client.on("guildMemberAdd", async (member) => {
 });
 
 // ================= AUTOMOD =================
-const userMessages = new Map();
+client.on("messageCreate", async message => {
 
-client.on("messageCreate", async (message) => {
-
-    if (!message.guild) return;
-    if (message.author.bot) return;
+    if (!message.guild || message.author.bot) return;
     if (IGNORED_CHANNELS.includes(message.channel.id)) return;
 
     const member = message.member;
     if (!member) return;
 
-    if (member.roles.cache.some(role => STAFF_ROLE_NAMES.includes(role.name))) return;
+    if (member.roles.cache.some(r => STAFF_ROLE_NAMES.includes(r.name))) return;
 
+    // Anti links
     if (/https?:\/\/|www\./i.test(message.content)) {
-        await message.delete().catch(()=>{});
+        await message.delete().catch(() => {});
         return;
     }
 
+    // Anti menciones
     if (message.mentions.users.size >= MENTION_LIMIT) {
-        await message.delete().catch(()=>{});
-        await member.timeout(MUTE_TIME, "Mention masivo").catch(()=>{});
+        await message.delete().catch(() => {});
+        await member.timeout(MUTE_TIME, "Mention masivo").catch(() => {});
         return;
     }
 
+    // Anti spam
     const now = Date.now();
 
-    if (!userMessages.has(message.author.id)) {
+    if (!userMessages.has(message.author.id))
         userMessages.set(message.author.id, []);
-    }
 
     const timestamps = userMessages.get(message.author.id);
     timestamps.push(now);
 
-    const recent = timestamps.filter(time => now - time < SPAM_TIME);
+    const recent = timestamps.filter(t => now - t < SPAM_TIME);
     userMessages.set(message.author.id, recent);
 
     if (recent.length >= SPAM_LIMIT) {
-        try {
-            await member.ban({ reason: "Spam automático" });
-        } catch {}
+        try { await member.ban({ reason: "Spam automático" }); } catch {}
         userMessages.delete(message.author.id);
     }
 });
 
 // ================= CAMBIO DE BANNER =================
 async function changeBannerFromArt() {
+
     try {
         const guild = await client.guilds.fetch(GUILD_ID);
         const channel = await guild.channels.fetch(ART_CHANNEL_ID);
@@ -379,30 +349,21 @@ async function changeBannerFromArt() {
         messages.forEach(msg => {
             msg.attachments.forEach(att => {
                 if (!att.name) return;
-
                 const name = att.name.toLowerCase();
-
-                if (
-                    name.endsWith(".png") ||
-                    name.endsWith(".jpg") ||
-                    name.endsWith(".jpeg") ||
-                    name.endsWith(".gif") ||
-                    name.endsWith(".webp")
-                ) {
+                if (/\.(png|jpg|jpeg|gif|webp)$/.test(name))
                     images.push(att.url);
-                }
             });
         });
 
-        if (images.length === 0) return;
+        if (!images.length) return;
 
         const randomImage = images[Math.floor(Math.random() * images.length)];
         await client.user.setBanner(randomImage);
 
-        console.log("Banner actualizado.");
+        console.log("✅ Banner actualizado");
 
-    } catch (error) {
-        console.error("Error cambiando banner:", error);
+    } catch (err) {
+        console.error("Error cambiando banner:", err);
     }
 }
 
@@ -411,8 +372,3 @@ client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
-
-
-
-
-
