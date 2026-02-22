@@ -17,7 +17,7 @@ const CLIENT_ID = "1473352150187905096";
 const GUILD_ID = "1368057208218058752";
 const WELCOME_CHANNEL_ID = "1368057208901996625";
 const ART_CHANNEL_ID = "1474089674413834442";
-const CONFESION_CHANNEL_ID = "RELLENO"; // Todavia no se a creado el canal de Confeciones
+const CONFESION_CHANNEL_ID = "1475251478410170428";
 
 const IGNORED_CHANNELS = [
     "1368057208901996634",
@@ -338,6 +338,7 @@ client.login(TOKEN)
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
 
