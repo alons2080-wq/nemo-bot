@@ -105,9 +105,21 @@ client.once("ready", async () => {
 async function registerCommands() {
 
     const commands = [
+
         new SlashCommandBuilder()
             .setName("nemo_pdd")
-            .setDescription("Palabra del día (2 usos diarios)")
+            .setDescription("Palabra del día (2 usos diarios)"),
+
+        new SlashCommandBuilder()
+            .setName("nemo_confecion")
+            .setDescription("Envía una confesión anónima")
+            .addStringOption(option =>
+                option
+                    .setName("mensaje")
+                    .setDescription("Escribe tu confesión")
+                    .setRequired(true)
+            )
+
     ].map(cmd => cmd.toJSON());
 
     const rest = new REST({ version: "10" }).setToken(TOKEN);
@@ -125,6 +137,7 @@ client.on("interactionCreate", async interaction => {
 
     if (!interaction.isChatInputCommand()) return;
 
+    // ===== PALABRA DEL DIA =====
     if (interaction.commandName === "nemo_pdd") {
 
         const userId = interaction.user.id;
@@ -148,57 +161,58 @@ client.on("interactionCreate", async interaction => {
             });
         }
 
-        const words = ["flippy" /* No sabia que mas poner entonces puse flippy xd */, "Freddy", "QUESUEÑOHACEESTOMEPASAPORHACERUNBOTDENEMOXDD", "Hola", "Mano"];
+        const words = ["Ocean", "Curiosity", "Dream", "Innovation", "Future"];
         const word = words[Math.floor(Math.random() * words.length)];
 
         data.uses++;
 
-        interaction.reply(`📖 La palabra del día es: **${word}**`);
+        return interaction.reply(`📖 La palabra del día es: **${word}**`);
     }
+
+    // ===== CONFESION =====
+    if (interaction.commandName === "nemo_confecion") {
+
+        const mensaje = interaction.options.getString("mensaje");
+
+        if (!mensaje || mensaje.length < 3) {
+            return interaction.reply({
+                content: "La confesión es demasiado corta.",
+                ephemeral: true
+            });
+        }
+
+        if (mensaje.length > 1000) {
+            return interaction.reply({
+                content: "La confesión es demasiado larga.",
+                ephemeral: true
+            });
+        }
+
+        const canal = interaction.guild.channels.cache.get(CONFESION_CHANNEL_ID);
+
+        if (!canal) {
+            return interaction.reply({
+                content: "No se encontró el canal de confesiones.",
+                ephemeral: true
+            });
+        }
+
+        const embed = new EmbedBuilder()
+            .setTitle("📩 Nueva confesión")
+            .setDescription(mensaje)
+            .setColor(0xff66cc)
+            .setFooter({ text: "Confesión anónima" })
+            .setTimestamp();
+
+        await canal.send({ embeds: [embed] });
+
+        return interaction.reply({
+            content: "Tu confesión fue enviada de forma anónima 🤫",
+            ephemeral: true
+        });
+    }
+
 });
-
-// ===== CONFESIONES =====
-if (interaction.commandName === "nemo_confecion") {
-
-    const mensaje = interaction.options.getString("mensaje");
-
-    if (!mensaje || mensaje.length < 3) {
-        return interaction.reply({
-            content: "La confesión es demasiado corta.",
-            ephemeral: true
-        });
-    }
-
-    if (mensaje.length > 1000) {
-        return interaction.reply({
-            content: "La confesión es demasiado larga.",
-            ephemeral: true
-        });
-    }
-
-    const canal = interaction.guild.channels.cache.get(CONFESION_CHANNEL_ID);
-
-    if (!canal) {
-        return interaction.reply({
-            content: "No se encontró el canal de confesiones.",
-            ephemeral: true
-        });
-    }
-
-    const embed = new EmbedBuilder()
-        .setTitle("📩 Nueva confesión")
-        .setDescription(mensaje)
-        .setColor(0xff66cc)
-        .setFooter({ text: "Confesión anónima" })
-        .setTimestamp();
-
-    await canal.send({ embeds: [embed] });
-
-    return interaction.reply({
-        content: "Tu confesión fue enviada de forma anónima 🤫",
-        ephemeral: true
-    });
-}
 
 // ================= BIENVENIDA + ANTI RAID =================
 client.on("guildMemberAdd", async member => {
@@ -324,5 +338,6 @@ client.login(TOKEN)
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
 
 
