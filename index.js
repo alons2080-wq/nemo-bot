@@ -17,6 +17,7 @@ const CLIENT_ID = "1473352150187905096";
 const GUILD_ID = "1368057208218058752";
 const WELCOME_CHANNEL_ID = "1368057208901996625";
 const ART_CHANNEL_ID = "1474089674413834442";
+const CONFESION_CHANNEL_ID = ""; // Todavia no se a creado el canal de Confeciones
 
 const IGNORED_CHANNELS = [
     "1368057208901996634",
@@ -156,6 +157,49 @@ client.on("interactionCreate", async interaction => {
     }
 });
 
+// ===== CONFESIONES =====
+if (interaction.commandName === "nemo_confecion") {
+
+    const mensaje = interaction.options.getString("mensaje");
+
+    if (!mensaje || mensaje.length < 3) {
+        return interaction.reply({
+            content: "La confesión es demasiado corta.",
+            ephemeral: true
+        });
+    }
+
+    if (mensaje.length > 1000) {
+        return interaction.reply({
+            content: "La confesión es demasiado larga.",
+            ephemeral: true
+        });
+    }
+
+    const canal = interaction.guild.channels.cache.get(CONFESION_CHANNEL_ID);
+
+    if (!canal) {
+        return interaction.reply({
+            content: "No se encontró el canal de confesiones.",
+            ephemeral: true
+        });
+    }
+
+    const embed = new EmbedBuilder()
+        .setTitle("📩 Nueva confesión")
+        .setDescription(mensaje)
+        .setColor(0xff66cc)
+        .setFooter({ text: "Confesión anónima" })
+        .setTimestamp();
+
+    await canal.send({ embeds: [embed] });
+
+    return interaction.reply({
+        content: "Tu confesión fue enviada de forma anónima 🤫",
+        ephemeral: true
+    });
+}
+
 // ================= BIENVENIDA + ANTI RAID =================
 client.on("guildMemberAdd", async member => {
 
@@ -280,3 +324,4 @@ client.login(TOKEN)
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
+
