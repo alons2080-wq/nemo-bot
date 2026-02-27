@@ -256,47 +256,6 @@ client.on("guildMemberAdd", async member => {
     }
 });
 
-// ================= AUTOMOD =================
-client.on("messageCreate", async message => {
-
-    if (!message.guild || message.author.bot) return;
-    if (IGNORED_CHANNELS.includes(message.channel.id)) return;
-
-    const member = message.member;
-    if (!member) return;
-
-    if (member.roles.cache.some(r => STAFF_ROLE_NAMES.includes(r.name))) return;
-
-    if (/https?:\/\/|www\./i.test(message.content)) {
-        await message.delete().catch(() => {});
-        return;
-    }
-
-    if (message.mentions.users.size >= MENTION_LIMIT) {
-        await message.delete().catch(() => {});
-        await member.timeout(MUTE_TIME, "Mention masivo").catch(() => {});
-        return;
-    }
-
-    const now = Date.now();
-
-    if (!userMessages.has(message.author.id))
-        userMessages.set(message.author.id, []);
-
-    const timestamps = userMessages.get(message.author.id);
-    timestamps.push(now);
-
-    const recent = timestamps.filter(t => now - t < SPAM_TIME);
-    userMessages.set(message.author.id, recent);
-
-    if (recent.length >= SPAM_LIMIT) {
-        try {
-            await member.timeout(5 * 60 * 1000, "Spam detectado");
-        } catch {}
-        userMessages.delete(message.author.id);
-    }
-});
-
 // ================= CAMBIO DE BANNER =================
 async function changeBannerFromArt() {
 
@@ -339,6 +298,4 @@ client.login(TOKEN)
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
 
-
-
-
+// Un mensaje de MrRat0: Holaaa, si andabas curosiando, pues sigue haciendolo xdddd, a me le dicen a flippy q ya quite el auto mod
