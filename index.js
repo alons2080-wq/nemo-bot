@@ -44,8 +44,8 @@ const model = genAI.getGenerativeModel({
 // ================== EXPRESS ==================
 const app = express();
 app.get("/", (req, res) => res.send("✅ Nemo Bot activo"));
-app.listen(process.env.PORT || 8080, () => {
-    console.log("🌐 Express corriendo");
+app.listen(process.env.PORT || 8080, "0.0.0.0", () => {
+    console.log("🌐 Servidor web activo");
 });
 
 // ================== CLIENT ==================
