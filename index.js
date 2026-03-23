@@ -1,3 +1,4 @@
+// ================== IMPORTS ==================
 const {
     Client,
     GatewayIntentBits,
@@ -9,9 +10,11 @@ const {
 } = require("discord.js");
 
 const express = require("express");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // ================== CONFIG ==================
 const TOKEN = process.env.TOKEN;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const CLIENT_ID = "1473352150187905096";
 const GUILD_ID = "1368057208218058752";
@@ -29,22 +32,9 @@ const IGNORED_CHANNELS = [
 
 const ROLE_NAME = "🙍‍♂️ || Miembros";
 
-const STAFF_ROLE_NAMES = [
-    "Manager",
-    "🛐 || Nemo",
-    "Bots",
-    "🛠️ || Mods/Ganga"
-];
-
-// ====== FILTROS ======
-const SPAM_LIMIT = 6;
-const SPAM_TIME = 5000;
-
-const MENTION_LIMIT = 5;
-const MUTE_TIME = 10 * 60 * 1000;
-
-const RAID_LIMIT = 5;
-const RAID_TIME = 10000;
+// ================== IA ==================
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 // ================== EXPRESS ==================
 const app = express();
@@ -63,7 +53,6 @@ const client = new Client({
 
 // ================== MAPS ==================
 const pddUsage = new Map();
-const userMessages = new Map();
 let joinTimestamps = [];
 
 // ================= READY =================
@@ -97,26 +86,23 @@ client.once("ready", async () => {
     setInterval(cambiarEstado, 60000);
 
     await registerCommands();
-    await changeBannerFromArt();
-    setInterval(changeBannerFromArt, 600000);
 });
 
-// ================= REGISTRAR SLASH =================
+// ================= SLASH COMMANDS =================
 async function registerCommands() {
 
     const commands = [
 
         new SlashCommandBuilder()
             .setName("nemo_pdd")
-            .setDescription("Palabra del día (2 usos diarios)"),
+            .setDescription("Palabra del día"),
 
         new SlashCommandBuilder()
             .setName("nemo_confecion")
-            .setDescription("Envía una confesión anónima")
+            .setDescription("Confesión anónima")
             .addStringOption(option =>
-                option
-                    .setName("mensaje")
-                    .setDescription("Escribe tu confesión")
+                option.setName("mensaje")
+                    .setDescription("Tu mensaje")
                     .setRequired(true)
             )
 
@@ -137,165 +123,103 @@ client.on("interactionCreate", async interaction => {
 
     if (!interaction.isChatInputCommand()) return;
 
-    // ===== PALABRA DEL DIA =====
+    // ===== PDD =====
     if (interaction.commandName === "nemo_pdd") {
-
-        const userId = interaction.user.id;
-        const today = new Date().toISOString().split("T")[0];
-
-        if (!pddUsage.has(userId)) {
-            pddUsage.set(userId, { date: today, uses: 0 });
-        }
-
-        const data = pddUsage.get(userId);
-
-        if (data.date !== today) {
-            data.date = today;
-            data.uses = 0;
-        }
-
-        if (data.uses >= 2) {
-            return interaction.reply({
-                content: "Ya usaste la palabra del día 2 veces hoy.",
-                ephemeral: true
-            });
-        }
 
         const words = ["Ocean", "Curiosity", "Dream", "Innovation", "Future"];
         const word = words[Math.floor(Math.random() * words.length)];
 
-        data.uses++;
-
-        return interaction.reply(`📖 La palabra del día es: **${word}**`);
+        return interaction.reply(`📖 Palabra: **${word}**`);
     }
 
     // ===== CONFESION =====
     if (interaction.commandName === "nemo_confecion") {
 
         const mensaje = interaction.options.getString("mensaje");
-
-        if (!mensaje || mensaje.length < 3) {
-            return interaction.reply({
-                content: "La confesión es demasiado corta.",
-                ephemeral: true
-            });
-        }
-
-        if (mensaje.length > 1000) {
-            return interaction.reply({
-                content: "La confesión es demasiado larga.",
-                ephemeral: true
-            });
-        }
-
         const canal = interaction.guild.channels.cache.get(CONFESION_CHANNEL_ID);
 
         if (!canal) {
-            return interaction.reply({
-                content: "No se encontró el canal de confesiones.",
-                ephemeral: true
-            });
+            return interaction.reply({ content: "Error canal", ephemeral: true });
         }
 
         const embed = new EmbedBuilder()
-            .setTitle("📩 Nueva confesión")
+            .setTitle("📩 Confesión")
             .setDescription(mensaje)
-            .setColor(0xff66cc)
-            .setFooter({ text: "Confesión anónima" })
-            .setTimestamp();
+            .setColor(0xff66cc);
 
         await canal.send({ embeds: [embed] });
 
         return interaction.reply({
-            content: "Tu confesión fue enviada de forma anónima 🤫",
+            content: "Enviado 🤫",
             ephemeral: true
         });
     }
 
 });
 
-// ================= BIENVENIDA + ANTI RAID =================
-client.on("guildMemberAdd", async member => {
+// ================= IA (MENSAJES) =================
+client.on("messageCreate", async (message) => {
 
-    const now = Date.now();
-    joinTimestamps.push(now);
-    joinTimestamps = joinTimestamps.filter(t => now - t < RAID_TIME);
+    if (message.author.bot) return;
+    if (IGNORED_CHANNELS.includes(message.channel.id)) return;
 
-    if (joinTimestamps.length >= RAID_LIMIT) {
+    // Solo responde si lo mencionan
+    if (!message.mentions.has(client.user)) return;
 
-        console.log("🚨 RAID DETECTADO");
+    const prompt = message.content.replace(/<@!?\\d+>/g, "").trim();
 
-        member.guild.members.cache.forEach(async m => {
-            if (!m.user.bot && m.joinedTimestamp > now - RAID_TIME) {
-                try { await m.ban({ reason: "Anti Raid" }); } catch {}
-            }
-        });
-
-        joinTimestamps = [];
-        return;
+    if (!prompt) {
+        return message.reply("¿Qué quieres?");
     }
+
+    try {
+
+        const result = await model.generateContent([
+            {
+                text: "Eres Nemo Bot, un bot divertido, sarcástico, usas humor latino y memes."
+            },
+            {
+                text: prompt
+            }
+        ]);
+
+        const response = result.response.text();
+
+        const finalText = response.length > 2000
+            ? response.slice(0, 2000)
+            : response;
+
+        message.reply(finalText);
+
+    } catch (err) {
+        console.error(err);
+        message.reply("Error con la IA 😢");
+    }
+
+});
+
+// ================= BIENVENIDA =================
+client.on("guildMemberAdd", async member => {
 
     const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
 
     if (channel) {
         const embed = new EmbedBuilder()
             .setTitle("Bienvenido!")
-            .setDescription(`Hola ${member}, disfruta tu estancia.`)
-            .setColor(0x00ff99)
-            .setThumbnail(member.user.displayAvatarURL())
-            .setTimestamp();
+            .setDescription(`Hola ${member}, disfruta de tu estadia en el servidor`)
+            .setColor(0x00ff99);
 
         channel.send({ embeds: [embed] });
     }
 
     const role = member.guild.roles.cache.find(r => r.name === ROLE_NAME);
     if (role) {
-        try {
-            await member.roles.add(role);
-        } catch {}
+        try { await member.roles.add(role); } catch {}
     }
 });
 
-// ================= CAMBIO DE BANNER =================
-async function changeBannerFromArt() {
-
-    try {
-        const guild = await client.guilds.fetch(GUILD_ID);
-        const channel = await guild.channels.fetch(ART_CHANNEL_ID);
-        if (!channel) return;
-
-        const messages = await channel.messages.fetch({ limit: 100 });
-
-        let images = [];
-
-        messages.forEach(msg => {
-            msg.attachments.forEach(att => {
-                if (!att.name) return;
-                const name = att.name.toLowerCase();
-                if (/\.(png|jpg|jpeg|gif|webp)$/.test(name))
-                    images.push(att.url);
-            });
-        });
-
-        if (!images.length) return;
-
-        const randomImage = images[Math.floor(Math.random() * images.length)];
-
-        try {
-            await client.user.setBanner(randomImage);
-        } catch {}
-
-    } catch (err) {
-        console.error("Error cambiando banner:", err);
-    }
-}
-
 // ================= LOGIN =================
-client.login(TOKEN)
-  .then(() => console.log("Bot iniciado correctamente"))
-  .catch(err => console.error("Error al iniciar:", err));
+client.login(TOKEN);
 
 process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
-
-// Un mensaje de MrRat0: Holaaa, si andabas curosiando, pues sigue haciendolo xdddd, a me le dicen a flippy q ya quite el auto mod
