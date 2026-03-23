@@ -16,6 +16,10 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const TOKEN = process.env.TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
+// Debug útil (NO borrar)
+console.log("TOKEN:", TOKEN ? "OK" : "MISSING");
+console.log("GEMINI:", GEMINI_API_KEY ? "OK" : "MISSING");
+
 if (!TOKEN || !GEMINI_API_KEY) {
     console.error("❌ Faltan variables de entorno");
     process.exit(1);
@@ -40,7 +44,9 @@ const model = genAI.getGenerativeModel({
 // ================== EXPRESS ==================
 const app = express();
 app.get("/", (req, res) => res.send("✅ Nemo Bot activo"));
-app.listen(process.env.PORT || 8080);
+app.listen(process.env.PORT || 8080, () => {
+    console.log("🌐 Express corriendo");
+});
 
 // ================== CLIENT ==================
 const client = new Client({
@@ -57,15 +63,15 @@ client.once("ready", async () => {
 
     console.log(`✅ Conectado como ${client.user.tag}`);
 
-    // Estado rotativo
     const estados = [
         "Hola gente XD",
-        "Ya no mas maid (LAMENTABLE)",
+        "Ya no mas maid (Lamentable)",
         "Te veo 👀",
         "Soy Nemo Bot XD"
     ];
 
     let i = 0;
+
     setInterval(() => {
         client.user.setPresence({
             status: "idle",
@@ -82,93 +88,100 @@ client.once("ready", async () => {
 
 // ================== SLASH COMMANDS ==================
 async function registerCommands() {
+    try {
 
-    const commands = [
+        const commands = [
+            new SlashCommandBuilder()
+                .setName("ping")
+                .setDescription("Responde pong"),
 
-        new SlashCommandBuilder()
-            .setName("ping")
-            .setDescription("Responde pong"),
+            new SlashCommandBuilder()
+                .setName("confesion")
+                .setDescription("Confesión anónima")
+                .addStringOption(opt =>
+                    opt.setName("mensaje")
+                        .setDescription("Tu mensaje")
+                        .setRequired(true)
+                )
+        ].map(cmd => cmd.toJSON());
 
-        new SlashCommandBuilder()
-            .setName("confesion")
-            .setDescription("Confesión anónima")
-            .addStringOption(opt =>
-                opt.setName("mensaje")
-                    .setDescription("Tu mensaje")
-                    .setRequired(true)
-            )
+        const rest = new REST({ version: "10" }).setToken(TOKEN);
 
-    ].map(cmd => cmd.toJSON());
+        await rest.put(
+            Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+            { body: commands }
+        );
 
-    const rest = new REST({ version: "10" }).setToken(TOKEN);
+        console.log("✅ Slash commands listos");
 
-    await rest.put(
-        Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
-        { body: commands }
-    );
-
-    console.log("✅ Slash commands listos");
+    } catch (err) {
+        console.error("❌ Error registrando comandos:", err);
+    }
 }
 
 // ================== INTERACTIONS ==================
 client.on("interactionCreate", async interaction => {
 
-    if (!interaction.isChatInputCommand()) return;
+    try {
 
-    if (interaction.commandName === "ping") {
-        return interaction.reply("🏓 Pong!");
-    }
+        if (!interaction.isChatInputCommand()) return;
 
-    if (interaction.commandName === "confesion") {
+        if (interaction.commandName === "ping") {
+            return interaction.reply("🏓 Pong!");
+        }
 
-        const mensaje = interaction.options.getString("mensaje");
-        const canal = interaction.guild.channels.cache.get(CONFESION_CHANNEL_ID);
+        if (interaction.commandName === "confesion") {
 
-        if (!canal) {
+            const mensaje = interaction.options.getString("mensaje");
+            const canal = interaction.guild.channels.cache.get(CONFESION_CHANNEL_ID);
+
+            if (!canal) {
+                return interaction.reply({
+                    content: "❌ Canal no encontrado",
+                    ephemeral: true
+                });
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle("📩 Confesión")
+                .setDescription(mensaje)
+                .setColor(0xff66cc);
+
+            await canal.send({ embeds: [embed] });
+
             return interaction.reply({
-                content: "❌ Canal no encontrado",
+                content: "✅ Enviado",
                 ephemeral: true
             });
         }
 
-        const embed = new EmbedBuilder()
-            .setTitle("📩 Confesión")
-            .setDescription(mensaje)
-            .setColor(0xff66cc);
-
-        await canal.send({ embeds: [embed] });
-
-        return interaction.reply({
-            content: "✅ Enviado",
-            ephemeral: true
-        });
+    } catch (err) {
+        console.error("❌ Error en interaction:", err);
     }
 });
 
 // ================== IA MENSAJES ==================
 client.on("messageCreate", async (message) => {
 
-    if (message.author.bot) return;
-    if (IGNORED_CHANNELS.includes(message.channel.id)) return;
-
-    // Detectar mención
-    if (!message.mentions.has(client.user)) return;
-
-    console.log("📩 Mensaje:", message.content);
-
-    const prompt = message.content.replace(/<@!?\\d+>/g, "").trim();
-
-    if (!prompt) {
-        return message.reply("❓ Escribe algo después de mencionarme");
-    }
-
     try {
+
+        if (message.author.bot) return;
+        if (IGNORED_CHANNELS.includes(message.channel.id)) return;
+        if (!message.mentions.has(client.user)) return;
+
+        console.log("📩 Mensaje:", message.content);
+
+        const prompt = message.content.replace(/<@!?\\d+>/g, "").trim();
+
+        if (!prompt) {
+            return message.reply("❓ Escribe algo después de mencionarme");
+        }
 
         await message.channel.sendTyping();
 
         const result = await model.generateContent([
             {
-                text: "Eres Nemo Bot, un bot divertido, sarcástico, estilo streamer latino."
+                text: "Eres Nemo Bot, gracioso, sarcástico, estilo streamer latino."
             },
             {
                 text: prompt
@@ -194,23 +207,33 @@ client.on("messageCreate", async (message) => {
 // ================== BIENVENIDA ==================
 client.on("guildMemberAdd", async member => {
 
-    const canal = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
+    try {
 
-    if (!canal) return;
+        const canal = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
+        if (!canal) return;
 
-    const embed = new EmbedBuilder()
-        .setTitle("👋 Bienvenido")
-        .setDescription(`Hola ${member}`)
-        .setColor(0x00ff99);
+        const embed = new EmbedBuilder()
+            .setTitle("👋 Bienvenido")
+            .setDescription(`Hola ${member}`)
+            .setColor(0x00ff99);
 
-    canal.send({ embeds: [embed] });
+        canal.send({ embeds: [embed] });
+
+    } catch (err) {
+        console.error("❌ Error bienvenida:", err);
+    }
 });
 
 // ================== ERRORES ==================
-process.on("unhandledRejection", console.error);
-process.on("uncaughtException", console.error);
+process.on("unhandledRejection", err => {
+    console.error("❌ UnhandledRejection:", err);
+});
+
+process.on("uncaughtException", err => {
+    console.error("❌ UncaughtException:", err);
+});
 
 // ================== LOGIN ==================
 client.login(TOKEN)
-    .then(() => console.log("🚀 Bot iniciado"))
+    .then(() => console.log("🚀 Bot iniciado correctamente"))
     .catch(err => console.error("❌ Error login:", err));
