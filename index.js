@@ -13,10 +13,13 @@ const express = require("express");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // ================== ENV ==================
-console.log("TOKEN RAW:", process.env.TOKEN);
-console.log("GEMINI RAW:", process.env.GEMINI_API_KEY);
+const TOKEN = process.env.TOKEN;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// Debug útil (NO borrar)
+// DEBUG (opcional)
+console.log("TOKEN RAW:", TOKEN);
+console.log("GEMINI RAW:", GEMINI_API_KEY);
+
 console.log("TOKEN:", TOKEN ? "OK" : "MISSING");
 console.log("GEMINI:", GEMINI_API_KEY ? "OK" : "MISSING");
 
