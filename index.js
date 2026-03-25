@@ -153,12 +153,6 @@ client.on("interactionCreate", async interaction => {
 
             const msg = await canal.send({ embeds: [embed] });
 
-            // Reacciones
-            await msg.react("❤️");
-            await msg.react("😂");
-            await msg.react("🔥");
-            await msg.react("👍");
-
             return interaction.reply({
                 content: "✅ Confesión enviada",
                 ephemeral: true
