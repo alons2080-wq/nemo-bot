@@ -16,7 +16,6 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const TOKEN = process.env.TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// DEBUG (opcional)
 console.log("TOKEN RAW:", TOKEN);
 console.log("GEMINI RAW:", GEMINI_API_KEY);
 
@@ -146,14 +145,22 @@ client.on("interactionCreate", async interaction => {
             }
 
             const embed = new EmbedBuilder()
-                .setTitle("📩 Confesión")
-                .setDescription(mensaje)
-                .setColor(0xff66cc);
+                .setTitle("🕵️ Confesión Anónima")
+                .setDescription(`"${mensaje}"`)
+                .setColor(0xff66cc)
+                .setFooter({ text: "Confesión enviada de forma anónima" })
+                .setTimestamp();
 
-            await canal.send({ embeds: [embed] });
+            const msg = await canal.send({ embeds: [embed] });
+
+            // Reacciones
+            await msg.react("❤️");
+            await msg.react("😂");
+            await msg.react("🔥");
+            await msg.react("👍");
 
             return interaction.reply({
-                content: "✅ Enviado",
+                content: "✅ Confesión enviada",
                 ephemeral: true
             });
         }
@@ -183,12 +190,8 @@ client.on("messageCreate", async (message) => {
         await message.channel.sendTyping();
 
         const result = await model.generateContent([
-            {
-                text: "Eres Nemo Bot, gracioso, sarcástico, estilo streamer latino."
-            },
-            {
-                text: prompt
-            }
+            { text: "Eres Nemo Bot, gracioso, sarcástico, estilo streamer latino." },
+            { text: prompt }
         ]);
 
         const response = result.response.text();
@@ -210,21 +213,19 @@ client.on("messageCreate", async (message) => {
 // ================== BIENVENIDA ==================
 client.on("guildMemberAdd", async member => {
 
-    try {
+    const canal = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
+    if (!canal) return;
 
-        const canal = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
-        if (!canal) return;
+    const embed = new EmbedBuilder()
+        .setAuthor({
+            name: `${member.user.username} se unió 👋`,
+            iconURL: member.user.displayAvatarURL({ dynamic: true })
+        })
+        .setDescription(`Hola ${member}, disfruta tu estancia.`)
+        .setColor(0x00ff99)
+        .setTimestamp();
 
-        const embed = new EmbedBuilder()
-            .setTitle("👋 Bienvenido")
-            .setDescription(`Hola ${member}`)
-            .setColor(0x00ff99);
-
-        canal.send({ embeds: [embed] });
-
-    } catch (err) {
-        console.error("❌ Error bienvenida:", err);
-    }
+    canal.send({ embeds: [embed] });
 });
 
 // ================== ERRORES ==================
