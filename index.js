@@ -69,7 +69,8 @@ client.once("ready", async () => {
         "Hola gente XD",
         "Ya no mas maid (Lamentable)",
         "Te veo 👀",
-        "Soy Nemo Bot XD"
+        "Soy Nemo Bot XD",
+        "A nemo l cabe 42 dedos en el culo"
     ];
 
     let i = 0;
